@@ -202,7 +202,7 @@ kyeon.exe --version
 
 해설은 **AI가 본문을 보고 썼어요. 사람이 한 줄씩 검토하지는 않았어요.** 역사와 언어는 널리 받아들여진 지식만 썼고, 학설이 갈리는 곳은 단정하지 않으려고 했어요. 쓴 쪽에서 사실이 불확실하다고 표시한 해설은 성경 본문과 웹 자료로 한 번 더 확인해서 틀린 설명을 고치거나 단정을 낮췄어요. 다만 이 확인도 AI가 한 거라 틀린 곳이 남아 있을 수 있어요. 신학적으로 민감한 부분은 직접 확인해 주세요. 고치고 싶다면 `data/plan.json`의 `blocks` 값을 바꾸면 바로 반영돼요. 작성 규칙은 [docs/STYLE.md](docs/STYLE.md)에 정리해 뒀어요.
 
-글투는 [Bamti](https://github.com/kcc920926-droid/bamti)가 옮겨 쓴 [im-not-ai](https://github.com/epoko77-ai/im-not-ai)의 한국어 문체 규칙으로 점검했어요. 연결어미 뒤 쉼표, 같은 끝맺음이 이어지는 문장, 부풀린 표현, 뻔한 비유처럼 AI 티가 나는 말투를 걸러 냈고, 문장 시작이 한쪽으로 쏠리지 않게 전체 분포도 살폈어요.
+글투는 [Bamti](https://github.com/kcc920926-droid/bamti)가 옮겨 쓴 [im-not-ai](https://github.com/epoko77-ai/im-not-ai)의 한국어 문체 규칙으로 점검했어요. 연결어미 뒤 쉼표, 같은 끝맺음이 이어지는 문장, 부풀린 표현, 뻔한 비유처럼 AI 티가 나는 말투를 걸러 냈고, 문장 시작이 한쪽으로 쏠리지 않게 전체 분포도 살폈어요. 영어를 옮긴 듯한 번역투도 따로 걸러 냈어요. `~를 빌려 씁니다`, `A를 B로 봅니다`, `~로 알려져 있습니다`, 글이 주어가 되어 "본문은 ~를 알려 줍니다" 하는 문장이 대표적이에요. 같은 규칙을 `tools/tlint.py`로 언제든 다시 돌려 볼 수 있어요.
 
 ## 본문 출처
 
@@ -229,7 +229,7 @@ uninstall.bat       위 등록 해제
 show.bat            위젯 다시 띄우기 (Python으로 돌릴 때)
 CHANGELOG.md        변경 기록
 docs/               개요 그림, 화면 사진, 해설 작성 규칙(STYLE.md), 배포 절차(RELEASING.md)
-tools/              kyeon.exe와 latest.json을 만드는 도구
+tools/              kyeon.exe와 latest.json을 만드는 도구, 해설 번역투 점검기(tlint.py)
 tests/              단위 테스트
 ```
 
