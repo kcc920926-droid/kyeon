@@ -1,0 +1,5 @@
+# 소스와 문서는 LF 로 통일한다
+* text=auto eol=lf
+# 배치 파일은 CRLF 를 그대로 둔다(GitHub 에서 ZIP 으로 내려받아도 윈도우에서 바로 돌아가게)
+*.bat -text
+*.png binary

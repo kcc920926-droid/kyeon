@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+.vscode/
+.idea/
+# 실행하면 만들어지는 개인 상태(시작일, 설정, 로그)는 %LOCALAPPDATA%\Kyeon 에 저장되므로 저장소에는 없다
+widget.log
+state.json
+signal.txt
