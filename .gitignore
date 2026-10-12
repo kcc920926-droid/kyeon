@@ -7,3 +7,5 @@ __pycache__/
 widget.log
 state.json
 signal.txt
+dist/
+build/

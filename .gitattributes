@@ -3,3 +3,11 @@
 # 배치 파일은 CRLF 를 그대로 둔다(GitHub 에서 ZIP 으로 내려받아도 윈도우에서 바로 돌아가게)
 *.bat -text
 *.png binary
+*.otf binary
+*.ttf binary
+# 사용자에게 필요 없는 것은 git archive 와 GitHub 의 ZIP 내려받기에서 뺀다
+/tools export-ignore
+/latest.json export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+*.ico binary

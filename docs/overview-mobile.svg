@@ -1,0 +1,150 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 3308" width="390" height="3308" role="img" aria-labelledby="ov-title ov-desc">
+  <title id="ov-title">켠 (kyeon) — 화면 한켠, 마음 한가운데</title>
+  <desc id="ov-desc">켠은 하루에 한 번 개역한글 말씀 한 덩이와 그 시대의 뜻을 띄워 주는 Windows 위젯이에요. kyeon.exe 를 내려받아 두 번 누르고 &#x27;설치할까요?&#x27; 물음에 예를 누르면 설치가 끝나고, Python 같은 건 따로 설치하지 않아도 돼요. PC를 켜고 로그온하거나 자정이 지나면 오늘의 말씀이 뜨고, 읽고 외워 본 뒤 오늘은 닫기를 누르면 그날은 다시 안 떠요. 창은 늘 세로:가로 3:2 로 열리고 긴 본문은 스크롤바로 넘겨 읽어요. 한 덩이는 본문과, 그 당시의 뜻에서 오늘로 이어 가는 해설로 이루어져 있고, 암송 모드는 1단계 핵심 단어, 2단계 중요한 명사와 형용사, 3단계 뜻 있는 말을 모두 가려요. 새 버전은 로그온할 때 한 번 확인하고, 허락하면 달라진 파일만 받아서 해시와 문법을 확인한 뒤 바꿔 끼우고 다시 떠요. Windows 10·11 전용이고, 해설은 AI가 썼고 사람이 검토하지는 않았어요.</desc>
+  <style>
+:root { color-scheme: light dark; --bg:#fbf8f2; --surface:#ffffff; --ink:#2a2723; --muted:#6a6155; --line:#d8cdb8; --accent:#85622a; --soft:#f1ebdd; --ok:#2c6a43; --btn:#ffffff; }
+@media (prefers-color-scheme:dark) { :root { --bg:#24221f; --surface:#2e2b27; --ink:#ede7db; --muted:#b9b0a2; --line:#51493d; --accent:#d9b56f; --soft:#302d28; --ok:#86cf9f; --btn:#24221f; } }
+text { font-family:'Segoe UI','Malgun Gothic','Apple SD Gothic Neo','Noto Sans CJK KR',Arial,sans-serif; fill:var(--ink); }
+.muted { fill:var(--muted); } .accent { fill:var(--accent); } .ok { fill:var(--ok); } .btn { fill:var(--btn); } .bold { font-weight:600; }
+.node { fill:var(--surface); stroke:var(--line); } .soft { fill:var(--soft); }
+.edge { fill:none; stroke:var(--accent); stroke-width:2; } .rail { stroke:var(--line); stroke-width:2; }
+.bar { fill:var(--line); } .abar { fill:var(--accent); opacity:.55; }
+</style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L8 4 L0 8 Z" fill="var(--accent)" />
+    </marker>
+  </defs>
+  <rect width="390" height="3308" rx="20" fill="var(--bg)" />
+  <text x="20" y="58" font-size="32" class="bold"><tspan x="20" dy="0">켠 (kyeon)</tspan></text>
+  <text x="20" y="102" font-size="25" class="bold accent"><tspan x="20" dy="0">화면 한켠, 마음 한가운데.</tspan></text>
+  <text x="20" y="134" font-size="16" class="muted"><tspan x="20" dy="0">하루에 한 번, 말씀 한 덩이와 그 시대의 뜻을</tspan><tspan x="20" dy="26">조용히 보여 주는 Windows 위젯이에요.</tspan></text>
+  <text x="20" y="224" font-size="21" class="bold"><tspan x="20" dy="0">01  설치는 세 번이면 끝나요</tspan></text>
+  <rect x="20" y="248" width="350" height="94" rx="12" class="node" />
+  <text x="36" y="278" font-size="18" class="bold accent"><tspan x="36" dy="0">내려받기</tspan></text>
+  <text x="36" y="304" font-size="15" class=""><tspan x="36" dy="0">kyeon.exe 를</tspan><tspan x="36" dy="23">내려받아요</tspan></text>
+  <line x1="195" y1="344" x2="195" y2="362" class="edge" marker-end="url(#arrow)"/>
+  <rect x="20" y="364" width="350" height="94" rx="12" class="node" />
+  <text x="36" y="394" font-size="18" class="bold accent"><tspan x="36" dy="0">더블클릭</tspan></text>
+  <text x="36" y="420" font-size="15" class=""><tspan x="36" dy="0">받은 파일을</tspan><tspan x="36" dy="23">두 번 눌러요</tspan></text>
+  <line x1="195" y1="460" x2="195" y2="478" class="edge" marker-end="url(#arrow)"/>
+  <rect x="20" y="480" width="350" height="94" rx="12" class="node" />
+  <text x="36" y="510" font-size="18" class="bold accent"><tspan x="36" dy="0">예</tspan></text>
+  <text x="36" y="536" font-size="15" class=""><tspan x="36" dy="0">&#x27;설치할까요?&#x27;에서</tspan><tspan x="36" dy="23">예를 누르면 끝이에요</tspan></text>
+  <text x="20" y="636" font-size="21" class="bold"><tspan x="20" dy="0">02  하루는 이렇게 지나가요</tspan></text>
+  <rect x="20" y="660" width="350" height="117" rx="12" class="node" />
+  <text x="36" y="690" font-size="18" class="bold accent"><tspan x="36" dy="0">로그온 · 자정</tspan></text>
+  <text x="36" y="716" font-size="15" class=""><tspan x="36" dy="0">PC를 켜면 뜨고</tspan><tspan x="36" dy="23">자정이 지나면</tspan><tspan x="36" dy="23">새 말씀이 떠요</tspan></text>
+  <line x1="195" y1="779" x2="195" y2="797" class="edge" marker-end="url(#arrow)"/>
+  <rect x="20" y="799" width="350" height="117" rx="12" class="node" />
+  <text x="36" y="829" font-size="18" class="bold accent"><tspan x="36" dy="0">오늘의 말씀</tspan></text>
+  <text x="36" y="855" font-size="15" class=""><tspan x="36" dy="0">1000일 중</tspan><tspan x="36" dy="23">오늘 하루치가</tspan><tspan x="36" dy="23">화면 한켠에 떠요</tspan></text>
+  <line x1="195" y1="918" x2="195" y2="936" class="edge" marker-end="url(#arrow)"/>
+  <rect x="20" y="938" width="350" height="94" rx="12" class="node" />
+  <text x="36" y="968" font-size="18" class="bold accent"><tspan x="36" dy="0">읽기 · 암송</tspan></text>
+  <text x="36" y="994" font-size="15" class=""><tspan x="36" dy="0">본문과 해설을 읽고</tspan><tspan x="36" dy="23">눌러서 외워 봐요</tspan></text>
+  <line x1="195" y1="1034" x2="195" y2="1052" class="edge" marker-end="url(#arrow)"/>
+  <rect x="20" y="1054" width="350" height="117" rx="12" class="node" />
+  <text x="36" y="1084" font-size="18" class="bold accent"><tspan x="36" dy="0">오늘은 닫기</tspan></text>
+  <text x="36" y="1110" font-size="15" class=""><tspan x="36" dy="0">그날은 다시 안 떠요</tspan><tspan x="36" dy="23">다시 보려면</tspan><tspan x="36" dy="23">시작 메뉴의 켠</tspan></text>
+  <text x="20" y="1233" font-size="21" class="bold"><tspan x="20" dy="0">03  화면은 이렇게 생겼어요</tspan></text>
+  <rect x="50" y="1257" width="290" height="435" rx="14" class="node" />
+  <text x="66" y="1286" font-size="16" class="bold accent"><tspan x="66" dy="0">켠</tspan></text>
+  <text x="244" y="1285" font-size="14" text-anchor="end" class="muted"><tspan x="244" dy="0">10월 12일</tspan></text>
+  <rect x="256" y="1268" width="70" height="26" rx="13" class="edge"/>
+  <text x="291" y="1286" font-size="14" text-anchor="middle" class="accent bold"><tspan x="291" dy="0">○ 암송</tspan></text>
+  <text x="66" y="1331" font-size="22" class="bold"><tspan x="66" dy="0">요한복음 1:1–14</tspan></text>
+  <text x="66" y="1355" font-size="16" class="muted"><tspan x="66" dy="0">태초부터 계신 말씀</tspan></text>
+  <clipPath id="ov-clip-m"><rect x="52" y="1369" width="286" height="271"/></clipPath>
+  <g clip-path="url(#ov-clip-m)">
+  <rect x="66" y="1375" width="244" height="8" rx="4" class="bar"/>
+  <rect x="66" y="1394" width="232" height="8" rx="4" class="bar"/>
+  <rect x="66" y="1413" width="244" height="8" rx="4" class="bar"/>
+  <rect x="66" y="1432" width="214" height="8" rx="4" class="bar"/>
+  <rect x="66" y="1451" width="240" height="8" rx="4" class="bar"/>
+  <rect x="66" y="1470" width="226" height="8" rx="4" class="bar"/>
+  <rect x="66" y="1489" width="174" height="8" rx="4" class="bar"/>
+  <rect x="64" y="1522" width="246" height="120" rx="10" class="soft" />
+  <rect x="64" y="1522" width="4" height="120" rx="2" style="fill:var(--accent)"/>
+  <text x="82" y="1550" font-size="14" class="bold accent"><tspan x="82" dy="0">그 당시</tspan></text>
+  <rect x="82" y="1558" width="194" height="6" rx="3" class="bar"/>
+  <rect x="82" y="1569" width="164" height="6" rx="3" class="bar"/>
+  <text x="82" y="1594" font-size="14" class="bold accent"><tspan x="82" dy="0">오늘</tspan></text>
+  <rect x="82" y="1602" width="184" height="6" rx="3" class="bar"/>
+  <rect x="82" y="1613" width="150" height="6" rx="3" class="bar"/>
+  </g>
+  <line x1="323" y1="1373" x2="323" y2="1636" class="rail" style="stroke-width:3"/>
+  <line x1="323" y1="1373" x2="323" y2="1522.05" style="stroke:var(--accent);stroke-width:6;stroke-linecap:round"/>
+  <line x1="64" y1="1646" x2="326" y2="1646" class="rail" style="stroke-width:1"/>
+  <text x="66" y="1674" font-size="13" class="muted"><tspan x="66" dy="0">개역한글판(1961)</tspan></text>
+  <rect x="234" y="1658" width="92" height="22" rx="6" class="soft"/>
+  <text x="280" y="1674" font-size="13" text-anchor="middle" class="accent bold"><tspan x="280" dy="0">오늘은 닫기</tspan></text>
+  <circle cx="340" cy="1281" r="12" class="edge" style="fill:var(--surface)"/>
+  <text x="340" y="1285.68" font-size="13" text-anchor="middle" class="bold accent"><tspan x="340" dy="0">1</tspan></text>
+  <circle cx="340" cy="1439" r="12" class="edge" style="fill:var(--surface)"/>
+  <text x="340" y="1443.68" font-size="13" text-anchor="middle" class="bold accent"><tspan x="340" dy="0">2</tspan></text>
+  <circle cx="340" cy="1582" r="12" class="edge" style="fill:var(--surface)"/>
+  <text x="340" y="1586.68" font-size="13" text-anchor="middle" class="bold accent"><tspan x="340" dy="0">3</tspan></text>
+  <circle cx="34" cy="1738" r="14" class="edge" style="fill:var(--surface)"/>
+  <text x="34" y="1743.4" font-size="15" text-anchor="middle" class="bold accent"><tspan x="34" dy="0">1</tspan></text>
+  <text x="64" y="1744" font-size="18" class="bold accent"><tspan x="64" dy="0">암송 스위치</tspan></text>
+  <text x="64" y="1770" font-size="16" class=""><tspan x="64" dy="0">1단계는 핵심 단어, 2단계는 중요한</tspan><tspan x="64" dy="24">명사·형용사, 3단계는 뜻 있는 말을</tspan><tspan x="64" dy="24">가려요. 눌러서 확인해 봐요.</tspan></text>
+  <circle cx="34" cy="1864" r="14" class="edge" style="fill:var(--surface)"/>
+  <text x="34" y="1869.4" font-size="15" text-anchor="middle" class="bold accent"><tspan x="34" dy="0">2</tspan></text>
+  <text x="64" y="1870" font-size="18" class="bold accent"><tspan x="64" dy="0">본문</tspan></text>
+  <text x="64" y="1896" font-size="16" class=""><tspan x="64" dy="0">개역한글을 책처럼 바탕체로 보여 줘요.</tspan><tspan x="64" dy="24">길면 스크롤바로 넘겨 읽어요.</tspan></text>
+  <circle cx="34" cy="1966" r="14" class="edge" style="fill:var(--surface)"/>
+  <text x="34" y="1971.4" font-size="15" text-anchor="middle" class="bold accent"><tspan x="34" dy="0">3</tspan></text>
+  <text x="64" y="1972" font-size="18" class="bold accent"><tspan x="64" dy="0">해설</tspan></text>
+  <text x="64" y="1998" font-size="16" class=""><tspan x="64" dy="0">그 당시의 뜻에서 시작해 오늘로 이어</tspan><tspan x="64" dy="24">가요. 6가지 형식이 돌아가며 나와요.</tspan></text>
+  <text x="20" y="2086" font-size="21" class="bold"><tspan x="20" dy="0">04  새 버전은 알아서 챙겨요</tspan></text>
+  <line x1="34" y1="2138" x2="34" y2="2208" class="rail"/>
+  <circle cx="34" cy="2124" r="14" class="edge" style="fill:var(--surface)"/>
+  <text x="34" y="2129.4" font-size="15" text-anchor="middle" class="bold accent"><tspan x="34" dy="0">1</tspan></text>
+  <text x="68" y="2130" font-size="18" class="bold accent"><tspan x="68" dy="0">확인</tspan></text>
+  <text x="68" y="2156" font-size="16" class=""><tspan x="68" dy="0">로그온할 때 한 번, GitHub의</tspan><tspan x="68" dy="24">latest.json만 읽어요.</tspan></text>
+  <line x1="34" y1="2236" x2="34" y2="2306" class="rail"/>
+  <circle cx="34" cy="2222" r="14" class="edge" style="fill:var(--surface)"/>
+  <text x="34" y="2227.4" font-size="15" text-anchor="middle" class="bold accent"><tspan x="34" dy="0">2</tspan></text>
+  <text x="68" y="2228" font-size="18" class="bold accent"><tspan x="68" dy="0">안내</tspan></text>
+  <text x="68" y="2254" font-size="16" class=""><tspan x="68" dy="0">새 버전이 있으면 위젯에 안내 줄이</tspan><tspan x="68" dy="24">떠요.</tspan></text>
+  <line x1="34" y1="2334" x2="34" y2="2404" class="rail"/>
+  <circle cx="34" cy="2320" r="14" class="edge" style="fill:var(--surface)"/>
+  <text x="34" y="2325.4" font-size="15" text-anchor="middle" class="bold accent"><tspan x="34" dy="0">3</tspan></text>
+  <text x="68" y="2326" font-size="18" class="bold accent"><tspan x="68" dy="0">허락</tspan></text>
+  <text x="68" y="2352" font-size="16" class=""><tspan x="68" dy="0">업데이트를 눌러야 진행해요. 나중에를</tspan><tspan x="68" dy="24">누르면 미뤄 둬요.</tspan></text>
+  <line x1="34" y1="2432" x2="34" y2="2502" class="rail"/>
+  <circle cx="34" cy="2418" r="14" class="edge" style="fill:var(--surface)"/>
+  <text x="34" y="2423.4" font-size="15" text-anchor="middle" class="bold accent"><tspan x="34" dy="0">4</tspan></text>
+  <text x="68" y="2424" font-size="18" class="bold accent"><tspan x="68" dy="0">받기</tspan></text>
+  <text x="68" y="2450" font-size="16" class=""><tspan x="68" dy="0">달라진 파일만 받아서 SHA-256과</tspan><tspan x="68" dy="24">문법을 확인해요.</tspan></text>
+  <circle cx="34" cy="2516" r="14" class="edge" style="fill:var(--surface)"/>
+  <text x="34" y="2521.4" font-size="15" text-anchor="middle" class="bold accent"><tspan x="34" dy="0">5</tspan></text>
+  <text x="68" y="2522" font-size="18" class="bold accent"><tspan x="68" dy="0">교체</tspan></text>
+  <text x="68" y="2548" font-size="16" class=""><tspan x="68" dy="0">이상이 없을 때만 바꾸고, 스스로 다시</tspan><tspan x="68" dy="24">떠요.</tspan></text>
+  <rect x="20" y="2614" width="350" height="334" rx="14" class="soft" />
+  <text x="40" y="2648" font-size="18" class="bold accent"><tspan x="40" dy="0">이것만은 지켜요</tspan></text>
+  <circle cx="46" cy="2675" r="5" style="fill:var(--ok)"/>
+  <text x="64" y="2680" font-size="16" class=""><tspan x="64" dy="0">허락 없이는 아무것도 바꾸지 않아요</tspan></text>
+  <circle cx="46" cy="2713" r="5" style="fill:var(--ok)"/>
+  <text x="64" y="2718" font-size="16" class=""><tspan x="64" dy="0">정해진 이름의 파일만 써요</tspan></text>
+  <circle cx="46" cy="2751" r="5" style="fill:var(--ok)"/>
+  <text x="64" y="2756" font-size="16" class=""><tspan x="64" dy="0">해시가 다르면 하나도 바꾸지 않아요</tspan></text>
+  <circle cx="46" cy="2789" r="5" style="fill:var(--ok)"/>
+  <text x="64" y="2794" font-size="16" class=""><tspan x="64" dy="0">도중에 실패하면 이전 파일로</tspan><tspan x="64" dy="24">되돌려요</tspan></text>
+  <circle cx="46" cy="2851" r="5" style="fill:var(--ok)"/>
+  <text x="64" y="2856" font-size="16" class=""><tspan x="64" dy="0">--rollback 으로 직전 버전으로</tspan><tspan x="64" dy="24">돌아갈 수 있어요</tspan></text>
+  <circle cx="46" cy="2913" r="5" style="fill:var(--ok)"/>
+  <text x="64" y="2918" font-size="16" class=""><tspan x="64" dy="0">설정에서 확인을 끌 수 있어요</tspan></text>
+  <text x="20" y="2992" font-size="21" class="bold"><tspan x="20" dy="0">05  미리 알아 두세요</tspan></text>
+  <rect x="20" y="3016" width="350" height="74" rx="12" class="node" />
+  <text x="36" y="3044" font-size="18" class="bold accent"><tspan x="36" dy="0">Windows 10·11 전용</tspan></text>
+  <text x="36" y="3070" font-size="15" class="muted"><tspan x="36" dy="0">Python 같은 건 따로 설치하지 않아도 돼요.</tspan></text>
+  <rect x="20" y="3104" width="350" height="74" rx="12" class="node" />
+  <text x="36" y="3132" font-size="18" class="bold accent"><tspan x="36" dy="0">인터넷은 가끔만</tspan></text>
+  <text x="36" y="3158" font-size="15" class="muted"><tspan x="36" dy="0">로그온할 때 새 버전을 확인하는 데만 써요.</tspan></text>
+  <rect x="20" y="3192" width="350" height="74" rx="12" class="node" />
+  <text x="36" y="3220" font-size="18" class="bold accent"><tspan x="36" dy="0">해설은 AI가 썼어요</tspan></text>
+  <text x="36" y="3246" font-size="15" class="muted"><tspan x="36" dy="0">사람이 한 줄씩 검토하진 않았어요.</tspan></text>
+</svg>

@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+os.environ["KYEON_NO_UPDATE"] = "1"  # 위젯 시험에서 새 버전 확인(네트워크)이 돌지 않게
 import kyeon as K  # noqa: E402
 
 FORMATS = {  # 형식 번호: 블록 라벨
@@ -20,7 +21,7 @@ FORMATS = {  # 형식 번호: 블록 라벨
     2: ["흔한 읽기", "당시의 뜻", "오늘"],
     3: ["한 단어: {term}", "오늘"],
     4: ["그 자리에서", "오늘"],
-    5: ["그 당시", "기도"],
+    5: ["그 당시"],  # 배경만(기도문은 쓰지 않는다)
     6: ["큰 이야기 속에서", "오늘"],
 }
 
@@ -107,7 +108,15 @@ class PlanTests(unittest.TestCase):
                     self.assertRegex(g, r"^한 단어: .{1,10}$", d["day"])
                 else:
                     self.assertEqual(g, w, d["day"])
-            self.assertTrue(d["question"].endswith("?"), d["day"])
+
+    def test_no_prayer_and_no_question_anywhere(self):
+        """해설까지만 쓴다: 기도 블록과 질문은 어떤 날에도 없다."""
+        for d in self.days:
+            self.assertNotIn("question", d, d["day"])
+            self.assertNotIn("기도", [b["label"] for b in d["blocks"]], d["day"])
+            self.assertTrue(all(b["text"].strip() for b in d["blocks"]), d["day"])
+        self.assertEqual(sum(d["format"] == 5 for d in self.days), 175)
+        self.assertTrue(all(len(d["blocks"]) == 1 for d in self.days if d["format"] == 5))
 
     def test_refs_are_unique_and_text_is_clean(self):
         self.assertEqual([r for r, n in Counter(d["ref"] for d in self.days).items() if n > 1], [])
@@ -211,29 +220,27 @@ class WidgetTests(unittest.TestCase):
         w.start("manual")
         self.assertEqual(w.idx, 0)
 
-    def test_every_day_renders_and_fits_the_screen(self):
+    def test_every_day_renders_in_one_fixed_frame(self):
+        """1000일 모두 같은 크기의 창에 담긴다. 길이가 달라도 창 모양은 늘 같고, 넘치는 건 스크롤로 읽는다."""
         w = self.make(preview_day=1)
-        w._apply_theme()
-        w.root.geometry(f"{int(w.W * w.sc)}x{int(600 * w.sc)}+0+0")
-        w.root.update_idletasks()
-        _l, top, _r, bottom = K.work_area()
-        too_tall = []
+        w.show()
+        w.root.update()
+        sizes = set()
         for i in range(len(w.days)):
             w.idx = i
-            w._set_compact(False)
-            w.render()
-            w.root.update_idletasks()
-            if w.root.winfo_reqheight() > (bottom - top) - 2 * int(16 * w.sc):
-                w._set_compact(True)
-                w.render()
-                w.root.update_idletasks()
-                if w.root.winfo_reqheight() > (bottom - top) - 2 * int(16 * w.sc):
-                    too_tall.append(i + 1)
-        self.assertEqual(too_tall, [])
+            w._layout()
+            sizes.add(w._size)
+        self.assertEqual(len(sizes), 1, sizes)
+        width, height = next(iter(sizes))
+        _l, top, _r, bottom = K.work_area()
+        avail = (bottom - top) - 2 * int(16 * w.sc)
+        self.assertLessEqual(height, avail)
+        if height < avail:  # 화면이 충분히 높으면 정확히 의도한 비율(낮은 화면은 폭을 줄여 맞춘다)
+            self.assertAlmostEqual(height / width, K.ASPECT, delta=0.01)
 
 
 class ReciteData(unittest.TestCase):
-    """암송용 가림 정보(lv): 글자마다 0(안 가림) 1(핵심 키워드) 2(내용어) 3(나머지)."""
+    """암송용 가림 정보(lv): 글자마다 0(공백·부호) 1(핵심 단어) 2(뜻이 중요한 명사·형용사) 3(그 밖의 내용어) 4(조사·어미, 안 가림)."""
 
     @classmethod
     def setUpClass(cls):
@@ -247,7 +254,7 @@ class ReciteData(unittest.TestCase):
             self.assertEqual(len(d["lv"]), len(d["verses"]), d["day"])
             for s, (_c, _v, t) in zip(d["lv"], d["verses"]):
                 self.assertEqual(len(s), len(t), d["ref"])
-                self.assertTrue(set(s) <= set("0123"), d["ref"])
+                self.assertTrue(set(s) <= set("01234"), d["ref"])
                 if self.MERGED.fullmatch(t):
                     self.assertEqual(set(s), {"0"}, d["ref"])  # 합쳐진 구절 표기는 가리지 않는다
                     continue
@@ -257,8 +264,8 @@ class ReciteData(unittest.TestCase):
                     elif "가" <= ch <= "힣":
                         self.assertNotEqual(code, "0", (d["ref"], ch))
 
-    def test_every_verse_has_a_keyword_and_levels_grow(self):
-        n = {k: 0 for k in "123"}
+    def test_every_verse_has_a_keyword_and_levels_grow_gently(self):
+        n = {k: 0 for k in "1234"}
         for d in self.days:
             for s, (_c, _v, t) in zip(d["lv"], d["verses"]):
                 if self.MERGED.fullmatch(t):
@@ -267,9 +274,16 @@ class ReciteData(unittest.TestCase):
                 for k in n:
                     n[k] += s.count(k)
         tot = sum(n.values())
-        self.assertLess(n["1"] / tot, 0.15)                 # 1단계는 가볍게
-        self.assertGreater((n["1"] + n["2"]) / tot, 0.45)   # 2단계는 절반 이상
-        self.assertGreater(n["3"] / tot, 0.2)
+        lv1, lv2, lv3 = n["1"] / tot, (n["1"] + n["2"]) / tot, (n["1"] + n["2"] + n["3"]) / tot
+        self.assertLess(lv1, 0.10)                      # 1단계는 가볍게(구절마다 핵심 단어 1~3개)
+        self.assertTrue(0.15 < lv2 < 0.35, lv2)         # 2단계는 중요한 명사·형용사까지만: 글자의 4분의 1 안팎
+        self.assertTrue(0.50 < lv3 < 0.70, lv3)         # 3단계는 뜻이 있는 말 전부(예전 2단계). 조사와 어미는 남는다
+        self.assertGreater(n["4"] / tot, 0.25)          # 조사·어미는 어느 단계에서도 보인다
+
+    def test_old_particle_level_is_gone(self):
+        """예전 3단계(모든 글자)는 없어졌다: 3단계에서도 코드 4(조사·어미)는 가리지 않는다."""
+        self.assertEqual(sorted(K.RECITE_LEVELS), [1, 2, 3])
+        self.assertIn("중요한", K.RECITE_LEVELS[2])
 
 
 class _Ev:
@@ -321,11 +335,24 @@ class ReciteWidget(unittest.TestCase):
         self.assertLess(counts[0], counts[1])
         self.assertLess(counts[1], counts[2])
 
-    def test_particles_stay_visible_until_level_3(self):
-        w = self.make(preview_day=3, recite=2)
-        w.start("manual")
-        shown = w.text.get("1.0", "end")
-        self.assertIn("에 ", shown)  # '태초에' 의 조사 '에' 는 2단계에서 보인다
+    def test_particles_stay_visible_at_every_level(self):
+        for level in (1, 2, 3):
+            w = self.make(preview_day=3, recite=level)
+            w.start("manual")
+            at = w.text.search("태초에", "1.0")
+            self.assertTrue(at)
+            self.assertIn("hid", w.text.tag_names(at), level)                     # 핵심 단어 '태초' 는 1단계부터 가려지고
+            self.assertNotIn("hid", w.text.tag_names(f"{at}+2c"), level)          # 조사 '에' 는 3단계에서도 보인다
+
+    def test_level_2_hides_important_nouns_and_level_3_hides_the_rest_of_the_content_words(self):
+        w2, w3 = self.make(preview_day=3, recite=2), self.make(preview_day=3, recite=3)
+        w2.start("manual")
+        w3.start("manual")
+        for w in (w2, w3):
+            self.assertIn("hid", w.text.tag_names(w.text.search("말씀", "1.0")))   # 중요한 명사
+        at2, at3 = w2.text.search("계시니라", "1.0"), w3.text.search("계시니라", "1.0")
+        self.assertNotIn("hid", w2.text.tag_names(at2))   # 동사 '계시' 는 2단계에서 보이고
+        self.assertIn("hid", w3.text.tag_names(at3))      # 3단계에서 가려진다
 
     def test_click_reveals_the_whole_word_and_rehide_restores(self):
         w = self.make(preview_day=3, recite=1)
@@ -561,25 +588,261 @@ class SkinAndSettings(unittest.TestCase):
         win._jump()
         self.assertEqual(w.current_day(), 42)
 
-    def test_excel_skin_fits_the_screen_on_sample_days(self):
+    def test_excel_skin_uses_the_same_frame_on_sample_days(self):
         w = self.make(preview_day=1, skin="excel")
-        w._apply_theme()
-        w.root.geometry(f"{int(w.W * w.sc)}x{int(600 * w.sc)}+0+0")
-        w.root.update_idletasks()
-        _l, top, _r, bottom = K.work_area()
-        too_tall = []
+        w.show()
+        w.root.update()
+        sizes = set()
         for i in range(0, len(w.days), 7):
             w.idx = i
-            w._set_compact(False)
-            w.render()
-            w.root.update_idletasks()
-            if w.root.winfo_reqheight() > (bottom - top) - 2 * int(16 * w.sc):
-                w._set_compact(True)
-                w.render()
-                w.root.update_idletasks()
-                if w.root.winfo_reqheight() > (bottom - top) - 2 * int(16 * w.sc):
-                    too_tall.append(i + 1)
-        self.assertEqual(too_tall, [])
+            w._layout()
+            sizes.add(w._size)
+        self.assertEqual(len(sizes), 1, sizes)
+        # 엑셀 스타일에서도 열 머리글(A·B)은 고정이고 본문 영역만 넘어간다
+        w.root.update()
+        self.assertLess(w.xl_cols.winfo_rooty(), w.scroller.frame.winfo_rooty())
+        self.assertGreater(w.xl_tabs.winfo_rooty(), w.scroller.frame.winfo_rooty())
+
+
+class _Wheel:
+    def __init__(self, widget, delta):
+        self.widget, self.delta = widget, delta
+
+
+class ScrollAndProportion(unittest.TestCase):
+    """창은 늘 정해진 비율로 열고, 긴 본문은 테마색의 스크롤바로 읽는다."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ["KYEON_THEME"] = "light"
+        cls.plan = K.load_plan()
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.state = K.State(Path(self.tmp.name))
+        self.widgets = []
+
+    def tearDown(self):
+        for w in self.widgets:
+            try:
+                w.quit()
+            except Exception:  # noqa: BLE001
+                pass
+        self.tmp.cleanup()
+
+    def make(self, day, **kw):
+        w = K.Widget(self.plan, self.state, today_fn=lambda: date(2026, 3, 1), preview_day=day, **kw)
+        self.widgets.append(w)
+        w.start("manual")
+        w.root.update()
+        return w
+
+    def find_day(self, want_scrollable, limit=40):
+        """스크롤이 필요한(또는 필요 없는) 날을 하나 찾는다."""
+        w = self.make(1)
+        for i in range(limit):
+            w.idx = i
+            w._layout()
+            w._place(*w._size)
+            w.root.update()
+            if w.scroller.scrollable() == want_scrollable:
+                return i + 1
+        return None
+
+    def test_window_opens_in_the_intended_proportion(self):
+        w = self.make(3)
+        width, height = w.root.winfo_width(), w.root.winfo_height()
+        _l, top, _r, bottom = K.work_area()
+        avail = (bottom - top) - 2 * int(16 * w.sc)
+        self.assertLessEqual(height, avail)
+        if height < avail:
+            self.assertAlmostEqual(height / width, K.ASPECT, delta=0.01)
+        self.assertEqual((width, height), w._size)
+
+    def test_short_and_long_days_open_at_the_same_size(self):
+        sizes = set()
+        for day in (1, 3, 8, 10, 500, 1000):
+            w = self.make(day)
+            sizes.add((w.root.winfo_width(), w.root.winfo_height()))
+        self.assertEqual(len(sizes), 1, sizes)
+
+    def test_long_text_gets_a_scrollbar_and_short_text_does_not(self):
+        long_day, short_day = self.find_day(True), self.find_day(False)
+        self.assertIsNotNone(long_day, "스크롤이 필요한 날이 없음")
+        w = self.make(long_day)
+        s = w.scroller
+        self.assertTrue(s.scrollable())
+        self.assertGreater(s.content_height(), s.view_height())
+        self.assertEqual(len(s.bar.find_all()), 2)       # 트랙과 막대
+        self.assertEqual(s.first(), 0.0)
+        top, bottom = s._thumb
+        self.assertLess(0, bottom - top)
+        self.assertLess(bottom - top, s.bar.winfo_height())
+        if short_day is not None:
+            w2 = self.make(short_day)
+            self.assertEqual(w2.scroller.bar.find_all(), ())  # 내용이 짧으면 막대를 그리지 않는다
+
+    def test_mouse_wheel_scrolls_and_stops_at_the_ends(self):
+        w = self.make(self.find_day(True))
+        s = w.scroller
+        w._wheel(_Wheel(w.text, -120))                    # 아래로
+        self.assertGreater(s.first(), 0.0)
+        for _ in range(200):
+            w._wheel(_Wheel(w.box, -120))
+        w.root.update()
+        self.assertTrue(s.seen_all())
+        self.assertLessEqual(s.canvas.yview()[1], 1.0)
+        for _ in range(200):
+            w._wheel(_Wheel(w.text, 120))                 # 위로
+        self.assertEqual(s.first(), 0.0)
+
+    def test_wheel_over_the_settings_window_does_not_scroll_the_widget(self):
+        w = self.make(self.find_day(True))
+        w.open_settings()
+        w.settings_win.top.update()
+        w._wheel(_Wheel(w.settings_win.btn_close, -120))
+        self.assertEqual(w.scroller.first(), 0.0)
+
+    def test_drag_the_thumb_and_click_the_track(self):
+        w = self.make(self.find_day(True))
+        s = w.scroller
+        top, bottom = s._thumb
+        mid = (top + bottom) // 2
+        s._press(_Ev(0, mid))
+        s._motion(_Ev(0, mid + 40))
+        self.assertGreater(s.first(), 0.0)
+        s._release(_Ev(0, mid + 40))
+        self.assertIsNone(s._grab)
+        before = s.first()
+        top, bottom = s._thumb
+        s._press(_Ev(0, bottom + 20))                     # 막대 아래의 트랙을 누르면 한 쪽 넘어간다
+        self.assertGreater(s.first(), before)
+        s._press(_Ev(0, 1))                               # 막대 위의 트랙을 누르면 거꾸로
+        s._press(_Ev(0, 1))
+        self.assertEqual(s.first(), 0.0)
+
+    def test_new_render_starts_at_the_top(self):
+        w = self.make(self.find_day(True))
+        w._wheel(_Wheel(w.text, -120))
+        self.assertGreater(w.scroller.first(), 0.0)
+        w.idx += 1
+        w.render()
+        w.root.update()
+        self.assertEqual(w.scroller.first(), 0.0)
+
+    def test_header_and_footer_stay_while_the_body_scrolls(self):
+        w = self.make(self.find_day(True))
+        head_y, foot_y = w.lbl_title.winfo_rooty(), w.foot.winfo_rooty()
+        for _ in range(5):
+            w._wheel(_Wheel(w.text, -120))
+        w.root.update()
+        self.assertEqual((w.lbl_title.winfo_rooty(), w.foot.winfo_rooty()), (head_y, foot_y))
+        self.assertLess(w.scroller.frame.winfo_rooty(), foot_y)
+        self.assertGreater(w.scroller.frame.winfo_rooty(), head_y)
+
+    def test_hidden_words_still_reveal_on_click_inside_the_scroll_area(self):
+        w = self.make(3, recite=2)
+        w.root.update()
+        ranges = w.text.tag_ranges("hid")
+        self.assertTrue(ranges)
+        x, y, _w, ht = w.text.bbox(ranges[0])
+        self.assertEqual(w._reveal(_Ev(x + 2, y + ht // 2)), "break")
+        self.assertEqual(len(w.revealed), 1)
+        # 스크롤로 내용이 움직인 뒤에도 누른 자리의 낱말이 정확히 보인다
+        w._wheel(_Wheel(w.text, -120))
+        w.root.update()
+        x, y, _w, ht = w.text.bbox(w.text.tag_ranges("hid")[0])
+        before = len(w.revealed)
+        w._reveal(_Ev(x + 2, y + ht // 2))
+        self.assertEqual(len(w.revealed), before + 1)
+
+    def test_scrollbar_follows_the_theme(self):
+        w = self.make(self.find_day(True))
+        light = w.scroller.colors["thumb"]
+        w.set_setting("theme", "dark")
+        w.root.update()
+        self.assertNotEqual(w.scroller.colors["thumb"], light)
+        self.assertEqual(w.scroller.colors["thumb"], K.DARK["veil_hi"])
+        self.assertEqual(w.scroller.canvas.cget("bg"), K.DARK["card"])
+
+    def test_font_size_keeps_the_proportion(self):
+        for font in ("small", "large"):
+            self.state.set("font", font)
+            w = self.make(3)
+            _l, top, _r, bottom = K.work_area()
+            if w.root.winfo_height() < (bottom - top) - 2 * int(16 * w.sc):
+                self.assertAlmostEqual(w.root.winfo_height() / w.root.winfo_width(), K.ASPECT, delta=0.01, msg=font)
+
+
+class BodyFont(unittest.TestCase):
+    """성경 본문(구절)만 함께 배포하는 리디바탕으로 보이고, 해설과 화면 글꼴은 그대로다."""
+
+    RIDI = ("RIDIBatang", "리디바탕")
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ["KYEON_THEME"] = "light"
+        cls.plan = K.load_plan()
+
+    def make(self, tmp):
+        w = K.Widget(self.plan, K.State(Path(tmp)), today_fn=lambda: date(2026, 3, 1), preview_day=3)
+        self.addCleanup(w.quit)
+        return w
+
+    def test_verses_use_the_bundled_font_and_the_rest_do_not(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            w = self.make(tmp)
+            self.assertIn(w.body_family, self.RIDI)
+            self.assertIn(w.f_body.actual("family"), self.RIDI)   # 글꼴이 실제로 적용됨(대체 글꼴이 아님)
+            self.assertIn(w.text.cget("font"), (str(w.f_body), w.f_body.name))
+            for name in ("f_expl", "f_ref", "f_title", "f_small", "f_btn", "f_app"):
+                self.assertNotIn(getattr(w, name).actual("family"), self.RIDI, name)
+
+    def test_font_is_measurably_not_the_fallback(self):
+        """없는 글꼴 이름은 시스템 기본 글꼴로 대체되어 폭이 달라진다. 리디바탕은 그것과 달라야 한다."""
+        from tkinter import font as tkfont
+        with tempfile.TemporaryDirectory() as tmp:
+            w = self.make(tmp)
+            sample = "태초에 말씀이 계시니라 하나님과 함께"
+            ridi = tkfont.Font(root=w.root, family=w.body_family, size=30).measure(sample)
+            missing = tkfont.Font(root=w.root, family="없는글꼴-zzz", size=30).measure(sample)
+            self.assertNotEqual(ridi, missing)
+
+    def test_body_size_is_one_step_larger_than_the_serif_default(self):
+        self.assertEqual(K.Widget.FONT_BASE["f_body"], 12)
+
+    def test_loading_ignores_missing_or_broken_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(K.load_bundled_fonts(Path(tmp) / "none"), 0)
+            self.assertEqual(K.load_bundled_fonts(Path(tmp)), 0)
+            (Path(tmp) / "broken.otf").write_bytes(b"not a font")
+            (Path(tmp) / "notes.txt").write_text("x")
+            self.assertEqual(K.load_bundled_fonts(Path(tmp)), 0)
+
+    def test_shipped_font_is_a_real_opentype_file_with_its_license(self):
+        font = K.FONT_DIR / "RIDIBatang.otf"
+        self.assertEqual(font.read_bytes()[:4], b"OTTO")
+        lic = (K.FONT_DIR / "LICENSE.txt").read_text(encoding="utf-8")
+        for need in ("SIL OPEN FONT LICENSE Version 1.1", "리디주식회사", "Copyright (c) 2019 RIDI & Sandoll"):
+            self.assertIn(need, lic)
+        self.assertGreaterEqual(K.load_bundled_fonts(), 1)
+
+    def test_fallback_order_when_the_bundled_font_is_missing(self):
+        import types
+
+        class Fake:
+            def __init__(self, names):
+                self._n = names
+
+            def families(self):
+                return self._n
+
+        stub = types.SimpleNamespace(family="맑은 고딕", BODY_FAMILIES=K.Widget.BODY_FAMILIES)
+        pick = K.Widget._pick_body_family
+        self.assertEqual(pick(stub, Fake(["리디바탕", "Batang", "맑은 고딕"])), "리디바탕")
+        self.assertEqual(pick(stub, Fake(["Batang", "맑은 고딕"])), "Batang")
+        self.assertEqual(pick(stub, Fake(["바탕", "맑은 고딕"])), "바탕")
+        self.assertEqual(pick(stub, Fake(["Arial", "맑은 고딕"])), "맑은 고딕")  # 바탕체가 하나도 없으면 화면 글꼴
 
 
 class CheckCommand(unittest.TestCase):
@@ -588,9 +851,14 @@ class CheckCommand(unittest.TestCase):
             self.assertEqual(K.cmd_check(K.load_plan(), K.State(Path(tmp))), 0)
 
     def test_old_explain_format_still_renders_as_one_block(self):
-        d = {"explain": "글", "question": "?", "verses": [[1, 1, "a"]], "title": "t", "ref": "r"}
+        d = {"explain": "글", "verses": [[1, 1, "a"]], "title": "t", "ref": "r"}
         self.assertTrue(K.day_ok(d))
         self.assertEqual(K.Widget.blocks_of(d), [("묵상", "글")])
+
+    def test_question_is_no_longer_required_nor_shown(self):
+        d = {"blocks": [{"label": "그 당시", "text": "배경"}], "verses": [[1, 1, "a"]], "title": "t", "ref": "r"}
+        self.assertTrue(K.day_ok(d))                       # 질문이 없어도 완전한 날이다
+        self.assertTrue(K.day_ok({**d, "question": "q?"}))  # 옛 계획표에 질문이 남아 있어도 문제없이 무시한다
 
 
 if __name__ == "__main__":
