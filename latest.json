@@ -17,21 +17,22 @@
     "성경 본문 글꼴을 리디바탕체로 바꿨습니다. 글꼴은 `fonts/`에 함께 들어 있고 PC에 설치하지 않습니다",
     "암송 단계를 쉽게 고쳤습니다. 2단계는 핵심 단어와 뜻이 중요한 명사·형용사만, 3단계는 뜻 있는 말을 모두 가립니다(예전 2단계). 조사와 어미는 어느 단계에서도 보입니다",
     "기도문과 질문을 모두 없애고 해설까지만 남겼습니다. 배경만 쓰던 175일은 `그 당시` 한 단락만 나옵니다",
+    "해설의 번역투를 우리말로 고쳤습니다. `빌려 씁니다`, `A를 B로 봅니다` 같은 영어식 표현을 `tools/tlint.py`와 테스트로 계속 점검합니다",
     "README를 새로 썼고 개요 그림을 넣었습니다"
   ],
   "base_url": "https://raw.githubusercontent.com/kcc920926-droid/kyeon/v0.2.0/",
   "files": {
     "CHANGELOG.md": {
-      "sha256": "1bc433e9ec4da15fdfd773c2750420daaa69d254228a4b5e99e5cc22c7dfc6f0",
-      "size": 2023
+      "sha256": "41b33447584a7c6930392937ba3f397381dc324248592cbea60b604e6faf4920",
+      "size": 2203
     },
     "README.md": {
-      "sha256": "95845287b42f3b2bd3b493781aa3f27d7d7d0dbbf8ab5d074f8a698f219dbd49",
-      "size": 20062
+      "sha256": "403965d352cbee130f8344eac482be0462d897563e3bb1fe295bc52a095b633f",
+      "size": 20416
     },
     "data/plan.json": {
-      "sha256": "980f5d78b948e7e20d871b7d482f86db2f5f3f777a25d378e3ad935363c99810",
-      "size": 2769880
+      "sha256": "61295c3d0ba520b4cbe14b77f7b011d03a818b2b6089643155283f4abc9809a4",
+      "size": 2770563
     },
     "fonts/LICENSE.txt": {
       "sha256": "ed9f0a23feb6862d517993a7896920bad42657f79894b37b30e3ba3f3d32bc1b",
@@ -61,7 +62,7 @@
   "runtime": {
     "name": "kyeon.exe",
     "url": "https://github.com/kcc920926-droid/kyeon/releases/download/v0.2.0/kyeon.exe",
-    "sha256": "3c78febd6e812ac36a9433bde8d596b095a1cd8afb64e51af2d7861f8ac881c1",
-    "size": 12823629
+    "sha256": "85fd618bb1c278f8601edea9a525a97c1e5dc8efbff9d39e1a580be8fb9beec9",
+    "size": 12824437
   }
 }
