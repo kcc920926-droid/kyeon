@@ -29,6 +29,7 @@ exe를 다시 만들어야 하는 때는 둘뿐입니다. `kyeon.py`가 exe에 �
    git tag v0.2.1
    git push origin main v0.2.1
    ```
+   저장소에 릴리스 불변성(Settings > General > Releases > Enable release immutability)을 켜 두었습니다. 릴리스를 게시한 뒤에는 그 태그를 옮길 수 없으니, 태그를 올리기 전에 가리키는 커밋이 맞는지 봅니다(`git rev-parse --short v0.2.1^{commit}`).
 6. **(exe가 바뀔 때만) `kyeon.exe`를 만들어 GitHub Release에 올립니다.** 이 PC의 Python을 건드리지 않도록 임시 가상환경에서 빌드합니다.
    ```
    python -m venv build/venv
@@ -40,6 +41,8 @@ exe를 다시 만들어야 하는 때는 둘뿐입니다. `kyeon.py`가 exe에 �
    GitHub 웹에서 `Releases > Draft a new release`로 태그 `v0.2.1`을 고르고 `dist/kyeon.exe`를 올립니다. 파일 이름은 반드시 `kyeon.exe`여야 합니다. README의 내려받기 링크(`releases/latest/download/kyeon.exe`)가 이 이름을 가리킵니다.
 
    > **주의:** GitHub의 `latest`는 가장 최근에 *릴리스*로 올린 것입니다. 태그만 올린 버전은 릴리스가 아니므로 영향이 없지만, 파일 없이 릴리스를 만들면 내려받기 링크가 깨집니다. 릴리스를 만든다면 항상 `kyeon.exe`를 붙이세요.
+
+   > **불변성 주의:** 릴리스 불변성을 켜 두면 **게시(Publish)한 뒤에는 파일을 더하거나 바꿀 수 없습니다.** 먼저 `Save draft`로 저장해서 `kyeon.exe`를 붙이고, 파일 이름과 크기, 해시(빌드 도구가 마지막에 찍어 준 sha256)가 `dist/kyeon.exe`와 같은지 확인한 다음에 게시하세요. 게시한 뒤에 잘못을 발견하면 같은 번호로 고치려 하지 말고 더 높은 번호로 다시 냅니다.
 7. **`latest.json`을 만들어 올립니다.** 이 파일이 올라가는 순간이 배포 시점입니다.
    ```
    python tools/make_manifest.py v0.2.1 --runtime-exe dist/kyeon.exe     # 6번에서 exe를 새로 만들었을 때
@@ -49,7 +52,7 @@ exe를 다시 만들어야 하는 때는 둘뿐입니다. `kyeon.py`가 exe에 �
    git push origin main
    ```
    도구는 태그가 가리키는 커밋에서 파일을 읽어 SHA-256을 계산하고, `kyeon.py`의 `__version__`이 태그와 같은지, `CHANGELOG.md`에 항목이 있는지 확인합니다. `--runtime-exe`를 주면 exe의 해시와 릴리스 주소가 `runtime` 항목으로 들어갑니다. 한 줄 설치(`install.ps1`)가 이 해시로 받은 exe를 확인합니다.
-8. **올라간 것을 확인합니다.** `raw.githubusercontent.com`은 5분쯤 캐시합니다.
+8. **올라간 것을 확인합니다.** `raw.githubusercontent.com`은 5분쯤 캐시합니다. exe를 올렸다면 `https://api.github.com/repos/kcc920926-droid/kyeon/releases/latest`의 `assets[].digest`가 `latest.json`의 `runtime.sha256`과 같은지도 봅니다.
    ```
    python tools/make_manifest.py v0.2.1 --check
    python kyeon.py --update-check --update-url https://raw.githubusercontent.com/kcc920926-droid/kyeon/main/latest.json
@@ -73,6 +76,7 @@ exe를 다시 만들어야 하는 때는 둘뿐입니다. `kyeon.py`가 exe에 �
 
 - 클라이언트는 **더 높은 버전**일 때만 새 버전으로 안내합니다. 낮은 버전으로 되돌리는 업데이트는 없습니다.
 - 아직 받지 않은 사람을 막으려면 `latest.json`을 직전 태그로 다시 만들어 올립니다(`python tools/make_manifest.py v0.2.0`).
+- 릴리스 불변성을 켠 뒤에 게시한 릴리스는 파일과 태그를 고칠 수 없습니다. 같은 번호로 고치려 하지 말고 더 높은 번호로 냅니다.
 - 이미 받은 사람은 더 높은 번호(0.2.2)로 고쳐서 냅니다. 급하면 사용자가 `kyeon.exe --rollback`(Python으로 돌린다면 `python kyeon.py --rollback`)으로 직전 파일로 돌아갈 수 있습니다.
 
 ## 클라이언트가 지키는 것
@@ -101,4 +105,4 @@ exe를 다시 만들어야 하는 때는 둘뿐입니다. `kyeon.py`가 exe에 �
 - **About 설명:** `화면 한켠, 마음 한가운데. 하루에 한 덩이, 개역한글 말씀과 그 시대의 뜻을 띄우는 Windows 위젯`
 - **Topics:** `bible` `korean` `widget` `windows` `tkinter` `desktop-widget`
 - **Social preview:** `docs/social-preview.png`를 올립니다(Settings > General > Social preview). 메신저에 저장소 주소를 붙일 때 미리보기 그림으로 쓰입니다.
-- **Releases:** 첫 릴리스(`v0.2.0`)에 `kyeon.exe`를 붙입니다(위 6번).
+- **Releases:** 첫 릴리스(`v0.2.0`)에 `kyeon.exe`를 붙였습니다(위 6번). Settings > General > Releases의 `Enable release immutability`를 켜 두었습니다. `v0.2.0`은 이 설정을 켜기 전에 게시해서 릴리스 API에 `immutable: false`로 나옵니다. 이후 릴리스부터 적용되는지는 다음 릴리스를 게시한 뒤 `immutable` 값으로 확인합니다.
