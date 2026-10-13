@@ -15,6 +15,8 @@ Python 이 없는 PC 에는 kyeon.exe(Python 실행 환경만 든 껍데기, too
   python kyeon.py --check      데이터 점검 + 오늘의 말씀을 콘솔에 출력
   python kyeon.py --reset      1일차부터 다시 시작
   python kyeon.py --day N      N일차를 미리보기(상태를 바꾸지 않음)
+  python kyeon.py --routes     고를 수 있는 읽는 길(전체 순서, 시기별, 테마별, 갈래별) 목록
+  python kyeon.py --route ID   읽는 길을 바꿈(--day 와 함께 쓰면 그 길의 N일차를 미리보기)
   python kyeon.py --update-check  새 버전이 있는지 확인
   python kyeon.py --update     새 버전으로 업데이트(--yes 로 확인 질문 생략)
   python kyeon.py --rollback   직전 버전으로 되돌리기
@@ -39,7 +41,7 @@ import zlib
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-__version__ = "0.2.0"   # 버전의 유일한 원본. 릴리스마다 올린다(docs/RELEASING.md)
+__version__ = "0.3.0"   # 버전의 유일한 원본. 릴리스마다 올린다(docs/RELEASING.md)
 APP = "Kyeon"
 LEGACY_APP = "DailyVerseWidget"  # 켠으로 이름을 바꾸기 전 버전의 자동 실행 값(설치·제거 때 함께 정리)
 BASE = Path(__file__).resolve().parent
@@ -81,7 +83,8 @@ def log(msg: str, directory: Path | None = None) -> None:
 # 설정 창에서 바꾸는 값과 기본값. 허용 값이 정해진 항목은 SETTING_CHOICES 에 적는다.
 SETTING_DEFAULTS = {"skin": "default", "theme": "auto", "font": "normal", "corner": "br",
                     "topmost": ALWAYS_ON_TOP, "recite": False, "recite_level": 1,
-                    "update_check": True, "update_url": ""}   # update_url: 비우면 GitHub(UPDATE_URL), 설정 창에는 없는 고급 값
+                    "update_check": True, "update_url": "",   # update_url: 비우면 GitHub(UPDATE_URL), 설정 창에는 없는 고급 값
+                    "route": "all"}   # 읽는 길: all(전체 순서) | era:<id> | theme:<id> | section:<갈래 이름>. 고르는 창은 RouteWindow
 SETTING_CHOICES = {"skin": ("default", "excel"), "theme": ("auto", "light", "dark"),
                    "font": ("small", "normal", "large"), "corner": ("br", "bl", "tr", "tl"),
                    "recite_level": (1, 2, 3)}
@@ -104,6 +107,31 @@ class State:
         tmp = self.file.with_suffix(".tmp")
         tmp.write_text(json.dumps(self.data, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, self.file)
+
+    def reload(self) -> None:
+        """다른 프로세스(--route, --skin 등)가 파일에 쓴 값을 다시 읽는다. 읽지 못하면 지금 값을 그대로 둔다."""
+        try:
+            self.data = json.loads(self.file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            pass
+
+    @property
+    def route_positions(self) -> dict[str, int]:
+        """길마다 마지막으로 읽던 자리(0부터). 길을 바꿔도 돌아오면 그 자리에서 이어 읽는다."""
+        v = self.data.get("route_pos")
+        if not isinstance(v, dict):
+            return {}
+        return {k: n for k, n in v.items() if isinstance(n, int) and not isinstance(n, bool) and n >= 0}
+
+    def set_route_position(self, route_id: str, pos: int) -> None:
+        d = self.route_positions
+        d[route_id] = max(0, int(pos))
+        self.data["route_pos"] = d
+        self.save()
+
+    def forget_route_positions(self) -> None:
+        if self.data.pop("route_pos", None) is not None:
+            self.save()
 
     def _get_date(self, key: str) -> date | None:
         try:
@@ -136,6 +164,8 @@ class State:
         """설정 값. 저장된 값이 없거나 허용 범위 밖이면 기본값."""
         default = SETTING_DEFAULTS[key]
         v = self.data.get(key, default)
+        if isinstance(default, str) and not isinstance(v, str):
+            return default
         choices = SETTING_CHOICES.get(key)
         if choices is not None and v not in choices:
             return default
@@ -207,6 +237,66 @@ def load_plan(path: Path = PLAN_FILE) -> dict:
     if not days or [d["day"] for d in days] != list(range(1, len(days) + 1)):
         raise ValueError("plan.json 의 day 번호가 1..N 연속이 아닙니다")
     return plan
+
+
+# ───────────────────────── 읽는 길 ─────────────────────────
+ROUTE_ALL = "all"
+ROUTE_KIND_NAMES = {"all": "전체 순서", "era": "시기별", "theme": "테마별", "section": "갈래별"}
+
+
+def build_routes(plan: dict) -> list[dict]:
+    """읽는 길 목록. 길마다 {id, kind, name, about, idxs}. idxs 는 plan["days"] 의 색인이고 원래 1000일의 순서를 따른다.
+    맨 앞은 늘 전체 순서. 시기·테마는 계획표 머리말의 routes 정의와 날마다의 era·themes 가 있을 때만 생기고(없는 옛 계획표는
+    전체 순서와 갈래만), 갈래는 section 값으로 만든다. 날이 하나도 없는 길은 뺀다."""
+    days = plan["days"]
+    routes = [{"id": ROUTE_ALL, "kind": "all", "name": ROUTE_KIND_NAMES["all"], "about": "원래 순서대로 하루에 하나",
+               "idxs": list(range(len(days)))}]
+    meta = plan.get("routes") or {}
+    for kind in ("era", "theme"):
+        for r in meta.get(kind) or []:
+            rid = r.get("id") if isinstance(r, dict) else None
+            if not (isinstance(rid, str) and rid and r.get("name")):
+                continue
+            idxs = [i for i, d in enumerate(days)
+                    if rid in ((d.get("themes") or []) if kind == "theme" else [d.get("era")])]
+            if idxs:
+                routes.append({"id": f"{kind}:{rid}", "kind": kind, "name": str(r["name"]),
+                               "about": str(r.get("about") or ""), "idxs": idxs})
+    sections: dict[str, list[int]] = {}
+    for i, d in enumerate(days):
+        if d.get("section"):
+            sections.setdefault(d["section"], []).append(i)
+    for name, idxs in sections.items():
+        routes.append({"id": f"section:{name}", "kind": "section", "name": name, "about": "", "idxs": idxs})
+    return routes
+
+
+def find_route(routes: list[dict], route_id: str | None) -> dict:
+    """id 로 길을 찾는다. 없으면(계획표에서 사라진 길 등) 전체 순서."""
+    for r in routes:
+        if r["id"] == route_id:
+            return r
+    return routes[0]
+
+
+def route_label(route: dict) -> str:
+    return route["name"] if route["kind"] == "all" else f"{ROUTE_KIND_NAMES[route['kind']]} · {route['name']}"
+
+
+def switch_route(state: State, routes: list[dict], new_id: str, today: date, cur_id: str | None = None) -> dict:
+    """읽는 길을 바꾼다. 떠나는 길의 읽던 자리는 기억해 두고, 새 길은 기억한 자리(처음이면 1일차)에서 이어 읽는다.
+    start_date 는 '지금 길의 1일차인 날'이므로 새 길의 자리에 맞춰 옮긴다."""
+    cur = find_route(routes, cur_id if cur_id is not None else state.get("route"))
+    new = find_route(routes, new_id)
+    if new["id"] == cur["id"]:
+        return new
+    start = state.start_date or today
+    state.set_route_position(cur["id"], day_index(start, today, len(cur["idxs"])))
+    pos = state.route_positions.get(new["id"], 0) % len(new["idxs"])
+    state.start_date = today - timedelta(days=pos)
+    state.dismissed_date = None
+    state.set("route", new["id"])
+    return new
 
 
 # ───────────────────────── Windows 보조 ─────────────────────────
@@ -1014,12 +1104,17 @@ class Widget:
     XL_TABS = ("파일", "홈", "삽입", "수식", "데이터", "검토", "보기")  # 엑셀 스타일의 장식용 메뉴 줄
 
     def __init__(self, plan: dict, state: State, today_fn=date.today, preview_day: int | None = None,
-                 recite: int | None = None, skin: str | None = None):
-        """recite/skin: 미리보기용으로 암송 모드(0=끔, 1~3=단계)나 화면 스타일을 강제한다. None 이면 저장된 설정을 따른다."""
+                 recite: int | None = None, skin: str | None = None, route: str | None = None):
+        """recite/skin/route: 미리보기용으로 암송 모드(0=끔, 1~3=단계), 화면 스타일, 읽는 길을 강제한다. None 이면 저장된 설정을 따른다."""
         import tkinter as tk
         from tkinter import font as tkfont
         self.tk = tk
         self.days = plan["days"]
+        self.plan_routes = build_routes(plan)
+        self.route = find_route(self.plan_routes, route if route is not None else state.get("route"))
+        self.track: list[int] = self.route["idxs"]   # 지금 길의 날들(plan["days"] 색인). 오늘의 말씀은 이 안에서 고른다
+        self.pos = 0                                  # 지금 길 안에서 오늘의 자리(0부터)
+        self.routes_win = None
         self.translation = plan.get("translation", "개역한글")
         self.state = state
         self.today_fn = today_fn
@@ -1043,8 +1138,9 @@ class Widget:
         self.base_dir = BASE                      # 업데이트가 파일을 바꿔 넣는 폴더(시험에서 바꿈)
         # 암송 모드: 가림 정보(lv)가 있는 계획에서만 쓸 수 있다
         self.can_recite = any(d.get("lv") for d in self.days)
-        self._persist = recite is None and skin is None and preview_day is None
+        self._persist = recite is None and skin is None and preview_day is None and route is None
         self.cfg = {k: state.get(k) for k in SETTING_DEFAULTS}
+        self.cfg["route"] = self.route["id"]
         if recite is not None:
             self.cfg["recite"] = recite > 0
             if recite:
@@ -1097,6 +1193,7 @@ class Widget:
         if self._persist:
             for k in SETTING_DEFAULTS:
                 self.cfg[k] = self.state.get(k)
+            self.cfg["route"] = self.route["id"]   # 길은 _follow_route 가 따라간다(자리 계산이 함께 바뀌어야 해서)
 
     def set_setting(self, key: str, value) -> None:
         """설정 하나를 바꾸고(미리보기가 아니면 저장) 화면에 바로 반영한다."""
@@ -1139,11 +1236,55 @@ class Widget:
             return False
 
     def current_day(self) -> int:
-        return self.idx + 1
+        """지금 읽는 길 안에서 오늘이 몇 일차인지(전체 순서에서는 계획표의 일차 번호와 같다)."""
+        return self.pos + 1
+
+    def route_label(self) -> str:
+        return route_label(self.route)
+
+    def _follow_route(self) -> None:
+        """다른 프로세스(--route)가 저장한 길로 바뀌었으면 따라간다. 자리(start_date)는 그쪽에서 이미 맞춰 두었다."""
+        if not self._persist:
+            return
+        rid = self.state.get("route")
+        if rid != self.route["id"]:
+            self.route = find_route(self.plan_routes, rid)
+            self.track = self.route["idxs"]
+            self.cfg["route"] = self.route["id"]
+
+    def set_route(self, route_id: str) -> None:
+        """읽는 길을 바꾼다. 떠나는 길의 읽던 자리는 기억해 두고, 새 길은 기억한 자리(처음이면 1일차)에서 이어 읽는다."""
+        new = find_route(self.plan_routes, route_id)
+        if new["id"] == self.route["id"]:
+            return
+        today = self.current_date or self.today_fn()
+        if self._persist:
+            switch_route(self.state, self.plan_routes, new["id"], today, cur_id=self.route["id"])
+        self.route, self.track = new, new["idxs"]
+        self.cfg["route"] = new["id"]
+        if self.preview_day:
+            self.preview_day = 1
+        self.revealed.clear()
+        if self.visible:
+            self.idx = self.pick(today)
+            self.reflow()
+        else:
+            self.refresh(today, show=True)
+        if self.settings_win is not None and self.settings_win.alive():
+            self.settings_win.refresh()
+        if self.routes_win is not None and self.routes_win.alive():
+            self.routes_win.refresh()
+
+    def open_routes(self) -> None:
+        if self.routes_win is not None and self.routes_win.alive():
+            self.routes_win.top.lift()
+            self.routes_win.refresh()
+            return
+        self.routes_win = RouteWindow(self)
 
     def jump_to_day(self, n: int) -> None:
-        """오늘이 n일차가 되도록 시작일을 옮긴다."""
-        n = max(1, min(len(self.days), int(n)))
+        """지금 읽는 길에서 오늘이 n일차가 되도록 시작일을 옮긴다."""
+        n = max(1, min(len(self.track), int(n)))
         today = self.current_date or self.today_fn()
         if self.preview_day:
             self.preview_day = n
@@ -1442,8 +1583,9 @@ class Widget:
         # 진행 줄: 구분 · 일차 / 오른쪽에 암송 스위치와 단계(1·2·3)
         self.prog_wrap = reg(tk.Frame(card), bg="tool")
         self.prog = reg(tk.Frame(self.prog_wrap), bg="tool")
-        self.lbl_prog = reg(tk.Label(self.prog, font=self.f_small, anchor="w"), bg="tool", fg="muted")
+        self.lbl_prog = reg(tk.Label(self.prog, font=self.f_small, anchor="w", cursor="hand2"), bg="tool", fg="muted")
         self.lbl_prog.pack(side="left")
+        self.lbl_prog.bind("<Button-1>", lambda e: self.open_routes())   # 진행 줄을 누르면 읽는 길을 고르는 창
         if self.can_recite:
             self.chips = {}
             for lv in (3, 2, 1):  # side=right 이므로 3,2,1 순으로 넣으면 화면에는 1 2 3
@@ -1642,12 +1784,16 @@ class Widget:
 
     # ---- 내용 ----
     def pick(self, today: date) -> int:
+        """오늘의 말씀이 계획표(plan["days"])의 몇 번째인지. 지금 읽는 길(self.track) 안에서 날짜대로 하루에 하나씩 나아간다."""
+        n = len(self.track)
         if self.preview_day:
-            return (self.preview_day - 1) % len(self.days)
-        start = self.state.start_date
-        if start is None:
-            self.state.start_date = start = today
-        return day_index(start, today, len(self.days))
+            self.pos = (self.preview_day - 1) % n
+        else:
+            start = self.state.start_date
+            if start is None:
+                self.state.start_date = start = today
+            self.pos = day_index(start, today, n)
+        return self.track[self.pos]
 
     @staticmethod
     def blocks_of(d: dict) -> list[tuple[str, str]]:
@@ -1817,7 +1963,10 @@ class Widget:
         pad, sc = int(18 * self.sc), self.sc
         self._style_recite_ui()
         self.lbl_date.configure(text=f"{today.month}월 {today.day}일 ({WEEKDAY[today.weekday()]})")
-        self.lbl_prog.configure(text=f"{d['section']} · {d['day']} / {len(self.days)}")
+        if self.route["id"] == ROUTE_ALL:
+            self.lbl_prog.configure(text=f"{d['section']} · {d['day']} / {len(self.days)}")
+        else:
+            self.lbl_prog.configure(text=f"{self.route['name']} · {self.pos + 1} / {len(self.track)}")
         self.lbl_ref.configure(text=d["ref"])
         self.lbl_title.configure(text=d["title"])
         self.xl_cell.configure(text=d["ref"])
@@ -1898,6 +2047,8 @@ class Widget:
         self.state.dismissed_date = self.current_date or self.today_fn()
         if self.settings_win is not None and self.settings_win.alive():
             self.settings_win.close()
+        if self.routes_win is not None and self.routes_win.alive():
+            self.routes_win.close()
         self.root.withdraw()
         self.visible = False
 
@@ -1917,6 +2068,7 @@ class Widget:
     # ---- 주기 확인: 자정(날짜 변경), 다른 프로세스의 신호 ----
     def refresh(self, today: date, show: bool) -> None:
         self.current_date = today
+        self._follow_route()
         self.idx = self.pick(today)
         self.revealed.clear()
         if show:
@@ -1939,6 +2091,7 @@ class Widget:
                     if self._quitting:
                         return
                 if sig in ("show", "settings"):
+                    self.state.reload()   # 신호를 보낸 쪽(--route, --skin 등)이 파일에 쓴 값을 읽는다
                     self.refresh(today, show=True)
                     if sig == "settings":
                         self.open_settings()
@@ -2012,6 +2165,7 @@ class SettingsWindow:
         self.chips: dict[str, dict] = {}   # 설정 키 -> {값: 칩 라벨}
         self.rows: dict[str, list] = {}    # 설정 키 -> 흐리게 만들 라벨들
         self._themed: list = []
+        self._entry_route = ""             # 일차 입력칸에 숫자를 넣어 둔 길(길이 바뀌면 다시 넣는다)
         self._build()
         self.refresh()
         self._place()
@@ -2083,6 +2237,14 @@ class SettingsWindow:
         row("recite_level", "가릴 단계", self._segment(inner, "recite_level",
                                                     [(1, "1 핵심 단어"), (2, "2 중요한 말"), (3, "3 뜻 있는 말 전부")]))
         header("읽기")
+        rt = reg(tk.Frame(inner), bg="card")
+        self.lbl_route = reg(tk.Label(rt, font=self.f, anchor="w"), bg="card", fg="text")
+        self.lbl_route.pack(side="left")
+        self.btn_route = tk.Label(rt, text="길 바꾸기", font=self.f, cursor="hand2", padx=10, pady=3)
+        self.btn_route.pack(side="left", padx=(10, 0))
+        self.btn_route.bind("<Button-1>", lambda e: self.w.open_routes())
+        rt.grid(row=r[0], column=0, columnspan=2, sticky="w", pady=(0, 6))
+        r[0] += 1
         self.lbl_day = reg(tk.Label(inner, font=self.f, anchor="w"), bg="card", fg="text")
         self.lbl_day.grid(row=r[0], column=0, columnspan=2, sticky="w", pady=(0, 4))
         r[0] += 1
@@ -2142,7 +2304,7 @@ class SettingsWindow:
 
     def _jump(self) -> None:
         txt = self.entry.get().strip()
-        n = len(self.w.days)
+        n = len(self.w.track)
         if not txt.isdigit() or not (1 <= int(txt) <= n):
             self.say(f"1 부터 {n} 사이의 숫자를 넣어 주세요")
             return
@@ -2176,9 +2338,11 @@ class SettingsWindow:
             if len(labs) > 1:  # 설명 줄은 해당할 때만 글을 넣는다
                 labs[1].configure(fg=p["muted"], text=notes.get(key, ""))
         self.entry.configure(bg=p["soft"], fg=p["text"], insertbackground=p["text"])
-        if not self.entry.get():  # 입력칸에는 오늘 일차를 미리 넣어 둔다
+        if not self.entry.get() or self._entry_route != w.route["id"]:  # 입력칸에는 오늘 일차를 미리 넣어 둔다(길이 바뀌면 다시)
+            self.entry.delete(0, "end")
             self.entry.insert(0, str(w.current_day()))
-        for b in (self.btn_go, self.btn_first, self.btn_chk):
+            self._entry_route = w.route["id"]
+        for b in (self.btn_go, self.btn_first, self.btn_chk, self.btn_route):
             b.configure(bg=p["soft"], fg=p["accent"])
         busy = w.update_state == "working" or w._checking
         self.btn_chk.configure(fg=p["muted"] if busy else p["accent"])
@@ -2189,20 +2353,161 @@ class SettingsWindow:
             self.btn_ins.pack_forget()
         self.lbl_upd.configure(text=w.update_status_text())
         self.btn_close.configure(bg=p["soft"], fg=p["accent"])
-        self.lbl_day.configure(text=f"오늘은 {w.current_day()}일차 / {len(w.days)}")
+        self.lbl_route.configure(text=f"읽는 길: {w.route_label()}")
+        self.lbl_day.configure(text=f"오늘은 {w.current_day()}일차 / {len(w.track)}")
 
     def _place(self) -> None:
+        place_beside(self.top, self.w)
+
+
+def place_beside(top, widget: "Widget") -> None:
+    """보조 창을 위젯 왼쪽에 붙여 연다(자리가 없으면 오른쪽, 위젯이 숨어 있으면 화면 가운데). 작업 영역 밖으로 나가지 않게 한다."""
+    top.update_idletasks()
+    tw, th = top.winfo_reqwidth(), top.winfo_reqheight()
+    left, up, right, bottom = work_area()
+    if widget.visible:
+        wx, wy, ww, wh = (widget.root.winfo_x(), widget.root.winfo_y(), widget.root.winfo_width(), widget.root.winfo_height())
+        x = wx - tw - 10 if wx - tw - 10 >= left else min(wx + ww + 10, right - tw)
+        y = wy + wh - th
+    else:
+        x, y = (left + right - tw) // 2, (up + bottom - th) // 2
+    top.geometry(f"+{max(left, x)}+{max(up, min(y, bottom - th))}")
+
+
+class RouteWindow:
+    """읽는 길을 고르는 창. 전체 순서, 시기별, 테마별, 갈래별 길이 세로로 나열되고, 하나를 누르면 그 길로 바뀐다.
+    다른 길에서 읽던 자리도 보여 주어서, 그 길로 돌아오면 거기서 이어 읽는다는 것을 알 수 있게 한다."""
+
+    def __init__(self, widget: Widget):
+        from tkinter import font as tkfont
+        self.w = widget
+        tk = self.tk = widget.tk
+        self.top = tk.Toplevel(widget.root)
+        self.top.title("켠 읽는 길")
+        self.top.resizable(False, False)
+        self.top.attributes("-topmost", True)
+        self.top.protocol("WM_DELETE_WINDOW", self.close)
+        self.top.bind("<Escape>", lambda e: self.close())
+        self.f = tkfont.Font(family=widget.family, size=10)
+        self.fb = tkfont.Font(family=widget.family, size=10, weight="bold")
+        self.fh = tkfont.Font(family=widget.family, size=9, weight="bold")
+        self.fs = tkfont.Font(family=widget.family, size=9)
+        self.rows: dict[str, dict] = {}   # 길 id -> 그 줄의 위젯들
+        self.heads: list = []             # '시기별' 같은 묶음 제목
+        self._build()
+        self.refresh()
+        self._place()
+        self.top.after(30, self._reveal_selected)
+
+    def alive(self) -> bool:
+        try:
+            return bool(self.top.winfo_exists())
+        except self.tk.TclError:
+            return False
+
+    def close(self) -> None:
+        if self.alive():
+            self.top.destroy()
+
+    def _build(self) -> None:
+        tk, w, sc = self.tk, self.w, self.w.sc
+        pad = int(14 * sc)
+        self.body = tk.Frame(self.top)
+        self.body.pack(fill="both", expand=True)
+        self.lbl_head = tk.Label(self.body, text="읽는 길을 고르세요", font=self.fb, anchor="w")
+        self.lbl_head.pack(fill="x", padx=pad, pady=(pad, 2))
+        self.lbl_sub = tk.Label(self.body, text="길을 바꿔도 길마다 읽던 자리를 기억합니다. 하루에 하나씩 읽는 것은 그대로입니다.",
+                                font=self.fs, anchor="w", justify="left", wraplength=int(300 * sc))
+        self.lbl_sub.pack(fill="x", padx=pad, pady=(0, int(8 * sc)))
+        self.scroller = Scroller(tk, self.body, sc)
+        self.scroller.canvas.configure(width=int(300 * sc), height=int(400 * sc))
+        self.scroller.frame.pack(fill="both", expand=True, padx=(pad, int(6 * sc)))
+        for kind in ROUTE_KIND_NAMES:
+            routes = [r for r in w.plan_routes if r["kind"] == kind]
+            if not routes:
+                continue
+            if kind != "all":
+                head = tk.Label(self.scroller.inner, text=ROUTE_KIND_NAMES[kind], font=self.fh, anchor="w")
+                head.pack(fill="x", pady=(int(12 * sc), int(4 * sc)))
+                self.heads.append(head)
+            for r in routes:
+                self._row(self.scroller.inner, r)
+        self.foot = tk.Frame(self.body)
+        self.foot.pack(fill="x", padx=pad, pady=(int(8 * sc), pad))
+        self.btn_close = tk.Label(self.foot, text="닫기", font=self.fb, cursor="hand2", padx=16, pady=4)
+        self.btn_close.pack(side="right")
+        self.btn_close.bind("<Button-1>", lambda e: self.close())
+        self.top.bind("<MouseWheel>", self._wheel)
+
+    def _row(self, parent, r: dict) -> None:
+        tk, sc = self.tk, self.w.sc
+        box = tk.Frame(parent, cursor="hand2", padx=int(10 * sc), pady=int(6 * sc))
+        box.pack(fill="x", pady=(0, int(4 * sc)))
+        line = tk.Frame(box, cursor="hand2")
+        line.pack(fill="x")
+        name = tk.Label(line, text=r["name"], font=self.fb, anchor="w", cursor="hand2")
+        name.pack(side="left")
+        count = tk.Label(line, text=f"{len(r['idxs'])}일", font=self.fs, cursor="hand2")
+        count.pack(side="right")
+        about = tk.Label(box, text=r["about"], font=self.fs, anchor="w", justify="left", wraplength=int(270 * sc),
+                         cursor="hand2")
+        if r["about"]:
+            about.pack(fill="x")
+        more = tk.Label(box, font=self.fs, anchor="w", cursor="hand2")   # 읽던 자리(있을 때만 보인다)
+        for wd in (box, line, name, count, about, more):
+            wd.bind("<Button-1>", lambda e, rid=r["id"]: self._pick(rid))
+        self.rows[r["id"]] = dict(box=box, line=line, name=name, count=count, about=about, more=more)
+
+    def refresh(self) -> None:
+        if not self.alive():
+            return
+        w, p = self.w, self.w._p
+        self.top.configure(bg=p["card"])
+        for wd in (self.body, self.foot):
+            wd.configure(bg=p["card"])
+        self.lbl_head.configure(bg=p["card"], fg=p["text"])
+        self.lbl_sub.configure(bg=p["card"], fg=p["muted"])
+        self.scroller.set_colors(p["card"], p["soft"], p["veil_hi"], p["accent"])
+        for head in self.heads:
+            head.configure(bg=p["card"], fg=p["accent"])
+        self.btn_close.configure(bg=p["soft"], fg=p["accent"])
+        saved = w.state.route_positions
+        for r in w.plan_routes:
+            row, n = self.rows[r["id"]], len(r["idxs"])
+            cur = r["id"] == w.route["id"]
+            bg, fg, sub = (p["accent"], p["btn_fg"], p["btn_fg"]) if cur else (p["soft"], p["text"], p["muted"])
+            row["box"].configure(bg=bg)
+            row["line"].configure(bg=bg)
+            row["name"].configure(bg=bg, fg=fg)
+            row["count"].configure(bg=bg, fg=sub)
+            row["about"].configure(bg=bg, fg=sub)
+            more = f"지금 {w.pos + 1}일차" if cur else (f"{saved[r['id']] % n + 1}일차에서 이어 읽기" if r["id"] in saved else "")
+            row["more"].configure(text=more, bg=bg, fg=sub)
+            if more:
+                row["more"].pack(fill="x")
+            else:
+                row["more"].pack_forget()
+
+    def _pick(self, route_id: str) -> None:
+        self.close()
+        self.w.set_route(route_id)
+
+    def _wheel(self, e) -> None:
+        notches = -int(e.delta / 120) or (-1 if e.delta > 0 else 1)
+        self.scroller.scroll(notches * 2)
+
+    def _reveal_selected(self) -> None:
+        """고른 길이 목록 아래쪽에 있어도 처음부터 보이게 스크롤해 둔다."""
+        row = self.rows.get(self.w.route["id"])
+        if not self.alive() or not row:
+            return
         self.top.update_idletasks()
-        tw, th = self.top.winfo_reqwidth(), self.top.winfo_reqheight()
-        left, top, right, bottom = work_area()
-        if self.w.visible:  # 위젯 왼쪽에 붙여 연다(자리가 없으면 오른쪽)
-            wx, wy, ww, wh = (self.w.root.winfo_x(), self.w.root.winfo_y(),
-                              self.w.root.winfo_width(), self.w.root.winfo_height())
-            x = wx - tw - 10 if wx - tw - 10 >= left else min(wx + ww + 10, right - tw)
-            y = wy + wh - th
-        else:
-            x, y = (left + right - tw) // 2, (top + bottom - th) // 2
-        self.top.geometry(f"+{max(left, x)}+{max(top, min(y, bottom - th))}")
+        y = row["box"].winfo_y() - int(40 * self.w.sc)
+        self.scroller.canvas.yview_moveto(max(0.0, min(1.0, y / max(1, self.scroller.content_height()))))
+        self.scroller._draw()
+
+    def _place(self) -> None:
+        place_beside(self.top, self.w)
 
 
 # ───────────────────────── 명령줄 ─────────────────────────
@@ -2232,8 +2537,13 @@ def cmd_check(plan: dict, state: State) -> int:
     print(f"켠 {__version__} | 번역본: {plan.get('translation')} | 총 {len(days)}일 | 내용 누락: {bad or '없음'}")
     today = date.today()
     start = state.start_date or today
-    d = days[day_index(start, today, len(days))]
-    print(f"오늘({today}) = {d['day']}일차 · {d['section']} · {d['ref']} · {d['title']}")
+    route = find_route(build_routes(plan), state.get("route"))
+    pos = day_index(start, today, len(route["idxs"]))
+    d = days[route["idxs"][pos]]
+    if route["id"] == ROUTE_ALL:
+        print(f"오늘({today}) = {d['day']}일차 · {d['section']} · {d['ref']} · {d['title']}")
+    else:
+        print(f"오늘({today}) = {route_label(route)} {pos + 1}일차 / {len(route['idxs'])} · {d['section']} · {d['ref']} · {d['title']}")
     if d.get("parallels"):
         print("  병행:", " · ".join(d["parallels"]))
     for c, v, t in d["verses"]:
@@ -2243,9 +2553,38 @@ def cmd_check(plan: dict, state: State) -> int:
     return 1 if bad else 0
 
 
+def cmd_routes(plan: dict, state: State) -> int:
+    """고를 수 있는 읽는 길과 --route 에 쓰는 id 를 보여 준다."""
+    cur = find_route(build_routes(plan), state.get("route"))["id"]
+    kind = ""
+    for r in build_routes(plan):
+        if r["kind"] != kind:
+            kind = r["kind"]
+            print(f"[{ROUTE_KIND_NAMES[kind]}]")
+        print(f"  {'*' if r['id'] == cur else ' '} {r['id']}  {r['name']} ({len(r['idxs'])}일)")
+    print("* 는 지금 읽는 길. 바꾸려면: python kyeon.py --route <id>   (id 에 공백이 있으면 따옴표로 감쌉니다)")
+    return 0
+
+
+def cmd_route(plan: dict, state: State, route_id: str) -> int:
+    routes = build_routes(plan)
+    if route_id not in {r["id"] for r in routes}:
+        print(f"그런 읽는 길이 없습니다: {route_id}  (목록은 --routes)")
+        return 2
+    new = switch_route(state, routes, route_id, date.today())
+    pos = day_index(state.start_date or date.today(), date.today(), len(new["idxs"]))
+    print(f"읽는 길을 바꿨습니다: {route_label(new)} ({pos + 1}일차 / {len(new['idxs'])})")
+    _tell_running(state, "show", "실행 중인 위젯에 바로 반영합니다.")
+    return 0
+
+
 def cmd_status(state: State) -> int:
     print(f"켠 {__version__}")
     print("자동 실행 등록:", autostart_get() or "없음")
+    try:
+        print("읽는 길:", route_label(find_route(build_routes(load_plan()), state.get("route"))))
+    except (OSError, ValueError, KeyError):
+        pass
     print("시작일(1일차):", state.start_date or "(아직 실행 전)")
     print("오늘 닫음:", "예" if state.dismissed_date == date.today() else "아니오")
     print("상태 폴더:", STATE_DIR)
@@ -2332,6 +2671,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--reset", action="store_true")
     ap.add_argument("--day", type=int, help="N일차 미리보기")
+    ap.add_argument("--route", metavar="ID", help="읽는 길(all, era:<id>, theme:<id>, section:<갈래>). --day 와 함께 쓰면 그 길의 N일차 미리보기, 혼자 쓰면 저장")
+    ap.add_argument("--routes", action="store_true", help="고를 수 있는 읽는 길 목록")
     ap.add_argument("--recite", type=int, choices=(1, 2, 3), help="--day 미리보기를 암송 모드(N단계)로 보기")
     ap.add_argument("--skin", choices=("default", "excel"),
                     help="화면 스타일. --day 와 함께 쓰면 미리보기, 혼자 쓰면 저장")
@@ -2372,10 +2713,15 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_rollback(state)
     if a.check:
         return cmd_check(load_plan(a.plan), state)
+    if a.routes:
+        return cmd_routes(load_plan(a.plan), state)
+    if a.route and not a.day:
+        return cmd_route(load_plan(a.plan), state, a.route)
     if a.reset:
         state.start_date = date.today()
         state.dismissed_date = None
-        print("1일차부터 다시 시작합니다. 실행 중이면 --quit 후 다시 실행하세요.")
+        state.forget_route_positions()
+        print("지금 읽는 길의 1일차부터 다시 시작합니다(다른 길에서 읽던 자리는 지웠습니다). 실행 중이면 --quit 후 다시 실행하세요.")
         return 0
     if a.skin and not a.day:
         state.set("skin", a.skin)
@@ -2410,7 +2756,11 @@ def main(argv: list[str] | None = None) -> int:
             ctypes.windll.shcore.SetProcessDpiAwareness(1)
         except Exception:  # noqa: BLE001
             pass
-        w = Widget(load_plan(a.plan), state, preview_day=a.day, recite=a.recite, skin=a.skin)
+        plan = load_plan(a.plan)
+        if a.route and a.route not in {r["id"] for r in build_routes(plan)}:
+            print(f"그런 읽는 길이 없습니다: {a.route}  (목록은 --routes)")
+            return 2
+        w = Widget(plan, state, preview_day=a.day, recite=a.recite, skin=a.skin, route=a.route)
         if a.settings:
             w.root.after(700, w.open_settings)
         w.run("manual")

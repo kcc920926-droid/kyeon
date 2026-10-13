@@ -34,7 +34,8 @@ class Rules(unittest.TestCase):
         self.assertEqual(tlint.check_block('그는 "이를 위하여 가지고 있는 것을 빌려" 주었다고 했습니다.'), [])
 
     def test_ordinary_words_that_contain_a_rule_are_not_flagged(self):
-        for s in ("그는 이웃에게 돈을 빌려 달라고 청했습니다.",   # 돈을 꾸는 말
+        for s in ("열쇠는 책상 위에 있어요. 문서는 서랍에 있었습니다.",   # 장소를 말하는 '에 있어' 는 에 있어서 와 다르다
+                  "그는 이웃에게 돈을 빌려 달라고 청했습니다.",   # 돈을 꾸는 말
                   "마음이 안전해진 사람은 오래 머물렀습니다.",   # 안전해진 ≠ 전해진
                   "바람에 문이 흔들립니다. 그리고 흔들렸습니다.".replace("그리고 ", ""),   # 흔들립니다 ≠ 들립니다
                   "사람들은 하늘이 아니라 불 가운데서 나타나셨다고 했습니다.",   # 아니라 불 ≠ 라 불리다
@@ -50,6 +51,18 @@ class Rules(unittest.TestCase):
     def test_corpus_quota_trips(self):
         texts = ["평범한 문장입니다."] * 100 + ["이 길은 여리고에 놓여 있습니다."] * 10
         self.assertTrue(any(r[0] == "L-5" for r in tlint.corpus_check(texts)))
+
+
+class RouteNames(unittest.TestCase):
+    """사용자에게 보이는 시기·테마의 이름과 설명도 번역투 없이 쓴다."""
+
+    def test_route_names_and_descriptions_have_no_translationese(self):
+        import routes
+        for r in routes.ERAS + routes.THEMES:
+            for field in ("name", "about"):
+                masked = tlint.mask(r[field])
+                found = [m.group(0) for _i, rx, *_ in tlint.COMPILED for m in rx.finditer(masked)]
+                self.assertEqual(found, [], f"{r['id']} {field}: {r[field]}")
 
 
 class StyleGuide(unittest.TestCase):
