@@ -1,30 +1,27 @@
 {
   "schema": 1,
   "app": "kyeon",
-  "version": "0.3.0",
-  "tag": "v0.3.0",
+  "version": "0.3.1",
+  "tag": "v0.3.1",
   "released": "2026-10-14",
   "min_python": "3.8",
   "notes": [
-    "읽을 길을 고를 수 있습니다. 시기별, 테마별, 갈래별로 하루에 하나씩 읽을 수 있습니다",
-    "위젯의 진행 줄이나 설정 창의 `길 바꾸기`에서 고릅니다. 길마다 읽던 자리를 기억해서 돌아오면 이어 읽습니다",
-    "시기는 책 이름으로 나눈 열 가지이고, 테마는 AI가 날마다 1~2개를 붙인 열세 가지입니다. 테마는 사람이 검토하지 않았습니다",
-    "명령줄 `--routes`와 `--route`를 넣었습니다",
-    "다른 창에서 `--skin`으로 바꾼 설정이 떠 있는 위젯에 바로 반영되지 않던 것을 고쳤습니다"
+    "시편 175일에도 `오늘` 단락을 넣었습니다. 지금까지 배경만 나오던 날도 이제 오늘의 장면으로 이어집니다",
+    "해설 형식이 다섯 가지로 줄었습니다(배경만 쓰던 형식이 없어졌습니다)"
   ],
-  "base_url": "https://raw.githubusercontent.com/kcc920926-droid/kyeon/v0.3.0/",
+  "base_url": "https://raw.githubusercontent.com/kcc920926-droid/kyeon/v0.3.1/",
   "files": {
     "CHANGELOG.md": {
-      "sha256": "839fec940c87fb853abcfaa01295b7d1a6735971a6a551050045dfb4f970cde4",
-      "size": 2846
+      "sha256": "9142d79efaaa26ec010ee0647cf0fcd31f18e2fc5391698e315018aa1d828ba6",
+      "size": 3113
     },
     "README.md": {
-      "sha256": "aadd1f3faf0a4e6931ec4e92be518c6a235919343a8146c18d4a600a089c62d1",
-      "size": 24635
+      "sha256": "dc5b2d86f115be773176a1c7b526eb34b9e3b117059921e4695ca1f1c6d22343",
+      "size": 25295
     },
     "data/plan.json": {
-      "sha256": "e19dfc80d7fe0c5a3d71ffa98d79269ad620e9ce9d1c59e3d1e0992702977765",
-      "size": 2812775
+      "sha256": "ac6af974431a618f67916d967840d1a7e76f6913d0bc4d6399f7e772318d0c2a",
+      "size": 2893308
     },
     "fonts/LICENSE.txt": {
       "sha256": "ed9f0a23feb6862d517993a7896920bad42657f79894b37b30e3ba3f3d32bc1b",
@@ -39,7 +36,7 @@
       "size": 701
     },
     "kyeon.py": {
-      "sha256": "9e26e7e86d29363978b3513fab6e18cb4b53281526d8b858ed54d760a2877755",
+      "sha256": "424a037e69c33c7b00b8e4e7474100084a649921888de6a3635e010950afc190",
       "size": 139633
     },
     "show.bat": {
