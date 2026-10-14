@@ -15,6 +15,7 @@
 import argparse
 import json
 import math
+import random
 import re
 import sys
 from collections import Counter, defaultdict
@@ -23,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import dupcheck  # noqa: E402
 import planio  # noqa: E402
+import themes  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CATEGORIES = dupcheck.CATEGORIES
@@ -84,6 +86,7 @@ def pool_problems(pool: list, existing_texts: dict = None, existing_words: set =
         if nm in names:
             out.append(f"{xid}: 이름이 {names[nm]} 와 같습니다")
         names.setdefault(nm, xid)
+        out += themes.problems_of(x)
         ws = x.get("words") or []
         if not 2 <= len(ws) <= 3:
             out.append(f"{xid}: 필수어는 2~3개여야 합니다")
@@ -111,21 +114,43 @@ def pool_problems(pool: list, existing_texts: dict = None, existing_words: set =
     return out
 
 
-def build_menus(pool: list, categories: list, k: int = MENU_SIZE) -> list:
-    """날마다 배정된 범주의 후보 k개를 준다. 메뉴는 날마다 서로 겹치지 않는다. -> [[후보 id, ...], ...] (날 순서)"""
+def build_menus(pool: list, categories: list, k: int = MENU_SIZE, seed: int = 1, window: int = themes.WINDOW) -> list:
+    """날마다 배정된 범주의 후보 k개를 준다. 메뉴는 날마다 서로 겹치지 않는다. -> [[후보 id, ...], ...] (날 순서)
+    풀은 범주 안에서 seed 로 섞는다(풀이 주제 띠로 만들어져 있어도 이웃한 날이 같은 띠를 가져가지 않게). 후보에 주제(theme)가 있으면
+    한 메뉴의 후보는 서로 다른 주제로 고르고, 같은 범주의 지난 window 일 메뉴에 덜 나온 주제를 먼저 쓴다."""
     queues = defaultdict(list)
     for x in pool:
-        queues[x["category"]].append(x["id"])
+        queues[x["category"]].append(x)
+    for c, q in queues.items():
+        random.Random(f"{seed}:{c}").shuffle(q)
     need = Counter(categories)
     for c, n in need.items():
         if len(queues[c]) < n * k:
             raise ValueError(f"범주 '{c}' 후보가 {len(queues[c])}개뿐입니다(필요 {n * k}개: {n}일 × {k})")
-    cursor = Counter()
+    recent = defaultdict(list)      # 범주 -> [(날 순번, 그 메뉴의 주제 목록)]
     out = []
-    for c in categories:
-        i = cursor[c]
-        out.append(queues[c][i:i + k])
-        cursor[c] += k
+    for i, c in enumerate(categories):
+        q = queues[c]
+        seen = Counter()
+        for j, ths in recent[c]:
+            if i - j < window:
+                seen.update(ths)
+        order = sorted(range(len(q)), key=lambda idx: (seen[q[idx].get("theme") or ""] if q[idx].get("theme") else 0, idx))
+        pick, used = [], set()
+        for idx in order:
+            th = q[idx].get("theme")
+            if len(pick) < k and (not th or th not in used):
+                pick.append(idx)
+                if th:
+                    used.add(th)
+        for idx in order:                      # 서로 다른 주제가 모자라면 겹쳐서라도 채운다
+            if len(pick) < k and idx not in pick:
+                pick.append(idx)
+        chosen = [q[idx] for idx in pick]
+        out.append([x["id"] for x in chosen])
+        recent[c].append((i, [x["theme"] for x in chosen if x.get("theme")]))
+        for idx in sorted(pick, reverse=True):
+            q.pop(idx)
     return out
 
 

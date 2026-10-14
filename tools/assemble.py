@@ -26,6 +26,7 @@ import dupcheck  # noqa: E402
 import planio  # noqa: E402
 import routes  # noqa: E402
 import schedule  # noqa: E402
+import themes  # noqa: E402
 import tlint  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -75,7 +76,8 @@ def items_for(days: list, db: dict, cats: list = None, menus: list = None, pool:
         if cats:
             it["category"] = cats[i]
         if menus:
-            it["menu"] = [{"id": s, "name": by[s]["name"], "words": by[s]["words"]} for s in menus[i]]
+            it["menu"] = [{"id": s, "name": by[s]["name"], "words": by[s]["words"],
+                           **({"theme": by[s]["theme"]} if by[s].get("theme") else {})} for s in menus[i]]
         out.append(it)
     return out
 
@@ -184,7 +186,8 @@ def ledger_entries(items: list, comments: list) -> dict:
         if not it.get("menu"):
             continue
         s = next(m for m in it["menu"] if m["id"] == c["scene"])
-        out[str(it["day"])] = {"name": s["name"], "category": it["category"], "words": list(s["words"]), "link": c["link"].strip()}
+        out[str(it["day"])] = {"name": s["name"], "category": it["category"], "words": list(s["words"]), "link": c["link"].strip(),
+                               **({"theme": s["theme"]} if s.get("theme") else {})}
     return out
 
 
@@ -216,6 +219,8 @@ def final_problems(new_days: list, plan: dict, ledger: dict = None, additions: d
         out += dupcheck.scene_problems({"scenes": additions}, {d["day"]: texts[d["day"]] for d in new_days if d["day"] in texts})
         order = [d["day"] for d in new_days]
         out += dupcheck.window_problems({"scenes": additions}, order, share=1.0)
+        before = set(themes.window_problems(ledger["scenes"]))      # 이웃한 해와의 경계까지 본다
+        out += [p for p in themes.window_problems(merged["scenes"]) if p not in before]
         if orders is not None:
             base = len(dupcheck.route_problems(ledger, orders["old"]))
             now = len(dupcheck.route_problems(merged, orders["new"]))
