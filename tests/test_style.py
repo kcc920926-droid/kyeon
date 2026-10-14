@@ -65,6 +65,31 @@ class RouteNames(unittest.TestCase):
                 self.assertEqual(found, [], f"{r['id']} {field}: {r[field]}")
 
 
+class LicenseFiles(unittest.TestCase):
+    """공개 저장소의 라이선스 안내가 빠지거나 어긋나지 않게 지킨다."""
+
+    def test_license_is_the_plain_mit_text(self):
+        text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("MIT License\n\nCopyright (c) 2026 "), text[:60])
+        self.assertIn("Permission is hereby granted, free of charge", text)
+        self.assertIn('THE SOFTWARE IS PROVIDED "AS IS"', text)
+
+    def test_notice_keeps_the_upstream_mit_notice_and_leaves_the_bible_text_out(self):
+        notice = (ROOT / "NOTICE.md").read_text(encoding="utf-8")
+        self.assertIn("Copyright (c) 2026 epoko77-ai", notice)       # im-not-ai 의 MIT 는 저작권 표시를 함께 두어야 한다
+        self.assertIn("CC BY 4.0", notice)
+        self.assertRegex(notice, r"성경 본문\(`data/plan.json`의 `verses`\) \| \*\*이 프로젝트의 라이선스에 포함되지 않습니다")
+
+    def test_readme_points_to_the_license_files(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("(LICENSE)", readme)
+        self.assertIn("(NOTICE.md)", readme)
+        self.assertNotIn("라이선스는 아직 정하지 않았", readme)
+
+    def test_fonts_keep_their_own_license_file(self):
+        self.assertIn("SIL Open Font License", (ROOT / "fonts" / "LICENSE.txt").read_text(encoding="utf-8"))
+
+
 class StyleGuide(unittest.TestCase):
     """docs/STYLE.md 의 모범 예는 본보기이므로, 번역투 규칙에 한 번도 걸리지 않아야 한다."""
 

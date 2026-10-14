@@ -246,6 +246,14 @@ kyeon.exe --version
 - 그 밖의 글자는 위키문헌 원본 그대로라서 인쇄본과 한두 글자 다를 수 있어요.
 - 개역한글에는 요즘 안 쓰는 표현(문둥병, 소경 등)이 있어요. 본문은 그대로 두었고, 해설에서는 오늘의 표현을 썼어요.
 
+## 라이선스
+
+- 프로그램과 도구는 [MIT](LICENSE)예요.
+- 해설, 시기와 테마, 암송 가림 정보, 문서는 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ko)이에요. 가져다 쓰는 건 자유고, 출처만 밝혀 주세요.
+- 성경 본문은 이 프로젝트가 만든 게 아니라서 위 라이선스에 포함되지 않아요. 위의 '본문 출처'를 먼저 읽어 주세요.
+- 리디바탕체는 [SIL OFL 1.1](fonts/LICENSE.txt)이에요.
+- `kyeon.exe`에 든 Python 같은 구성품과, 참고한 번역투 규칙의 라이선스는 [NOTICE.md](NOTICE.md)에 적었어요.
+
 ## 폴더 구조
 
 ```
@@ -258,6 +266,8 @@ install.bat         Python이 있을 때 소스로 돌리기 위한 자동 실�
 uninstall.bat       위 등록 해제
 show.bat            위젯 다시 띄우기 (Python으로 돌릴 때)
 CHANGELOG.md        변경 기록
+LICENSE             프로그램과 도구의 라이선스(MIT)
+NOTICE.md           부분마다 다른 라이선스와 구성품 안내
 docs/               개요 그림, 화면 사진, 해설 작성 규칙(STYLE.md), 읽는 길(ROUTES.md), 배포 절차(RELEASING.md)
 tools/              kyeon.exe와 latest.json을 만드는 도구, 해설 번역투 점검기(tlint.py), 읽는 길 정의와 점검(routes.py)
 tests/              단위 테스트
@@ -300,4 +310,3 @@ Windows와 tkinter가 필요해요. 테스트가 1000일 전체를 한 번씩 �
 - 해설은 AI가 썼고 아직 검토 전이에요.
 - 테마도 AI가 붙인 거라 사람이 보기에 아쉬운 분류가 있을 수 있어요. 시기는 책 단위로 나눈 길잡이예요.
 - 암송용 단어는 계산으로 골라서, 사람이 보기에 아쉬운 선택이 있을 수 있어요.
-- 라이선스는 아직 정하지 않았어요.
