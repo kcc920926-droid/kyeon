@@ -8,5 +8,8 @@
 | `year1_categories.json` | 새 날 365일의 범주 순서(`tools/assign.py --categories 365`). 기존 장부의 범주 쏠림을 새 날로 바로잡도록 정했습니다 |
 | `pilot/days.json` | 시범 60일(1001~1060일). plan.json 과 같은 한 날 한 줄 형식. 아직 plan.json 에 합치지 않았습니다 |
 | `pilot/ledger.json` | 시범 60일의 장면 장부 추가분. 합치면 `ledger/scenes.json` 에 더합니다 |
+| `year1/days.json` | 첫 해의 나머지 305일(1061~1365일). 형식은 시범과 같고 시범 60일과 합쳐 첫 해 365일이 됩니다. 아직 `data/` 에 넣지 않았습니다 |
+| `year1/ledger.json` | 그 305일의 장면 장부 추가분 |
+| `year1/REVIEW.md` | 사람이 먼저 읽을 날(조립에서 다시 쓴 36일, 이음이 약하다고 알려진 날) |
 
 만드는 순서와 점검은 `tools/assemble.py` 의 설명을 보세요.

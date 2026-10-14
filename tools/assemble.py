@@ -2,7 +2,7 @@
 
   python tools/assemble.py --prepare DIR --wave 0 [--limit 60] [--skip 60] [--cats C --menus M --pool P]   쓸 날의 입력(본문, 범주, 장면 메뉴)을 조각 파일로 만든다
   python tools/assemble.py --check DIR                                                         DIR/commentary_NN.json 의 짜임과 문체, 장면 선택을 점검한다
-  python tools/assemble.py --assemble DIR --out F                                              점검을 통과한 해설로 plan 의 날(lv 포함)과 장부 추가분을 만든다(kiwipiepy 필요)
+  python tools/assemble.py --assemble DIR --out F [--show N]                                   점검을 통과한 해설로 plan 의 날(lv 포함)과 장부 추가분을 만든다(kiwipiepy 필요). 문제는 N개(기본 40)까지 보여 준다
 
 흐름
   1. prepare: schedule.waves 로 그 해에 쓸 하루치 목록과 일차를 정한다(1001일부터. limit 은 시범으로 앞 일부만 쓸 때).
@@ -250,6 +250,7 @@ def main(argv=None):
     ap.add_argument("--limit", type=int)
     ap.add_argument("--skip", type=int, default=0, help="--prepare: 해의 앞 N일은 이미 썼으니 건너뛴다")
     ap.add_argument("--per-agent", type=int, default=30)
+    ap.add_argument("--show", type=int, default=40, help="--assemble: 보여 줄 문제의 최대 개수")
     ap.add_argument("--cats")
     ap.add_argument("--menus")
     ap.add_argument("--pool")
@@ -308,7 +309,7 @@ def main(argv=None):
         orders = {"old": ledger_tool.route_orders(plan), "new": ledger_tool.route_orders(plus)} if ledger and additions else None
         final = final_problems(days, plan, ledger, additions, orders)
         if final:
-            print("\n".join(final[:40]), f"\n… 문제 {len(final)}개" if len(final) > 40 else "")
+            print("\n".join(final[:a.show]), f"\n… 문제 {len(final)}개" if len(final) > a.show else "")
             return 1
         out = Path(a.out or directory / "wave_days.json")
         write_days(out, days)
