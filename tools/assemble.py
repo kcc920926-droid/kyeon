@@ -38,10 +38,17 @@ FORMAT_LABELS = {                    # 형식 번호: 블록 라벨(앱 시험�
 }
 TERM_LABEL = re.compile(r"^한 단어: .{1,10}$")
 THEME_IDS = [t["id"] for t in routes.THEMES]
-TITLE = (2, 30)
+TITLE = (4, 26)                      # docs/STYLE.md 4-3
 LINK = (4, 80)
-LIMITS = {"흔한 읽기": (20, 100), "오늘": (dupcheck.MIN_CHARS, 300)}     # 라벨별 글자 수(공백 포함). 지금 plan 은 흔한 읽기 32~72, 오늘 96~220
-DEFAULT_LIMITS = (60, 400)
+LIMITS = {"흔한 읽기": (30, 130), "오늘": (70, 220)}     # 라벨별 글자 수(공백 포함). docs/STYLE.md 2 의 표. 나머지 블록은 DEFAULT_LIMITS
+DEFAULT_LIMITS = (90, 260)
+# docs/STYLE.md 4-1 에서 글자로 가려낼 수 있는 것. 지금 plan.json 2151개 블록에는 하나도 없다(쉼표는 6개 블록에만)
+FORBIDDEN = [
+    ("대시", re.compile(r"[—–]")), ("괄호", re.compile(r"[()\[\]]")), ("마크다운 기호", re.compile(r"[*#`~]")),
+    ("영문", re.compile(r"[A-Za-z]")), ("한자", re.compile(r"[一-鿿]")), ("세미콜론", re.compile(r";")),
+    ("물음표(수사 의문)", re.compile(r"\?")), ("줄바꿈", re.compile(r"\n")), ("이모지", re.compile("[\U0001F300-\U0001FAFF☀-➿]")),
+    ("연결어미 뒤 쉼표", re.compile(r"(?:하고|지만|하며|면서|아서|어서|으나|는데|니까),\s")),
+]
 DAY_KEYS = ("day", "section", "ref", "title", "era", "themes", "note", "parallels", "verses", "format", "blocks", "lv")
 
 
@@ -112,6 +119,10 @@ def check_commentary(c: dict, item: dict, pool_by_id: dict = None) -> list:
             bad(f"'{label}' 블록이 {len(text)}자입니다({lo}~{hi}자)")
         for rid, name, found, fix in tlint.check_block(text):
             bad(f"'{label}' 번역투 {rid}({name}): '{found}' → {fix}")
+        for name, rx in FORBIDDEN:
+            m = rx.search(text)
+            if m:
+                bad(f"'{label}' 에 쓰지 않는 표현이 있습니다: {name} '{m.group(0).strip()}'")
     parallels = c.get("parallels")
     if parallels is not None:
         ok = isinstance(parallels, list) and parallels and all(isinstance(p, str) for p in parallels)

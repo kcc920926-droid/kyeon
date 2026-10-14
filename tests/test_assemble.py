@@ -53,7 +53,7 @@ POOL = [{"id": "s0001", "name": "새벽 항구에서 그물을 걷는 어선", "
 
 def commentary(day=1001, **over):
     c = {"day": day, "title": "빛이 있으라", "themes": ["god", "hope"], "format": 1,
-         "blocks": [{"label": "그 당시", "text": "고대 사람들은 바다 같은 깊음을 두려워했습니다. 이 글은 그 어둠 한가운데서 말씀 하나로 빛이 생겼다고 적습니다. " * 1},
+         "blocks": [{"label": "그 당시", "text": "고대 사람들은 바다 같은 깊음을 두려워했습니다. 이 글은 그 어둠 한가운데서 말씀 하나로 빛이 생겼다고 적습니다. 이웃 나라의 창조 이야기에는 신들의 싸움이 나오지만 여기에는 싸움이 없습니다."},
                     {"label": "오늘", "text": TODAY}],
          "scene": "s0001", "link": LINK}
     c.update(over)
@@ -106,7 +106,7 @@ class Commentary(unittest.TestCase):
         c["blocks"][0]["label"] = "흔한 읽기"
         self.assertIn("블록 라벨", self.problems(c))
         self.assertIn("블록이 3개", self.problems(commentary(format=2)))
-        c3 = commentary(format=3, blocks=[{"label": "한 단어: 등대", "text": "등대라는 말은 어두운 바다에서 방향을 잡아 주는 불을 뜻합니다. 옛 사람은 이 말을 들으면 먼 불빛을 떠올렸습니다."},
+        c3 = commentary(format=3, blocks=[{"label": "한 단어: 등대", "text": "등대라는 말은 어두운 바다에서 방향을 잡아 주는 불을 뜻합니다. 옛 사람은 이 말을 들으면 먼 불빛을 떠올렸습니다. 배가 돌아올 길이 거기서 시작된다고 믿었기 때문입니다."},
                                          {"label": "오늘", "text": TODAY}])
         self.assertEqual(A.check_commentary(c3, item()), [])
         c3["blocks"][0]["label"] = "한 단어: 아주아주아주긴낱말입니다"
@@ -119,6 +119,17 @@ class Commentary(unittest.TestCase):
         c = commentary()
         c["blocks"][0]["text"] = "이 글은 그 일에 대해 말합니다. 그 사실에 대한 기록이 이어집니다. 사람들은 이 땅에 있어서 오래 기다렸습니다. " * 1
         self.assertIn("번역투", self.problems(c))
+
+    def test_characters_the_style_guide_forbids_are_found(self):
+        for bad, name in (("빛이 있으라 — 그 말씀입니다.", "대시"), ("빛(光)이 있었습니다.", "괄호"), ("빛이 있었을까요?", "물음표"),
+                          ("light 가 있었습니다.", "영문"), ("하나님이 빛을 보시고 좋아하고, 어둠을 나누셨습니다.", "연결어미 뒤 쉼표")):
+            c = commentary()
+            c["blocks"][0]["text"] = c["blocks"][0]["text"] + " " + bad
+            self.assertIn(name, self.problems(c), bad)
+
+    def test_title_has_a_length_range(self):
+        self.assertIn("title", self.problems(commentary(title="빛")))
+        self.assertIn("title", self.problems(commentary(title="가" * 27)))
 
     def test_scene_must_come_from_the_menu_and_use_its_words(self):
         self.assertIn("메뉴", self.problems(commentary(scene="s0099")))
