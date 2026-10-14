@@ -119,6 +119,34 @@ class Ledger(unittest.TestCase):
         self.assertTrue(any("1일: 배정된 장면" in p for p in D.scene_problems(LEDGER, late)))
 
 
+class SceneNames(unittest.TestCase):
+    NAMES = {"1": "병원 대기실에서 검사 결과를 기다리는 가족 곁에 앉은 사람",
+             "2": "병원 대기실에서 검사 결과를 기다리는 시간",
+             "3": "새벽 열차가 긴 터널을 빠져나오는 순간",
+             "4": "편의점 야간 근무 중 손님이 뜸한 새벽"}
+
+    def test_same_scene_in_different_words_is_found_inside_one_set(self):
+        pairs = D.similar_names(self.NAMES)
+        self.assertEqual([(a, b) for _j, a, b in pairs], [("1", "2")])
+        self.assertGreater(pairs[0][0], 0.5)
+
+    def test_each_pair_is_reported_once_and_in_order_of_similarity(self):
+        names = dict(self.NAMES, **{"5": "병원 대기실에서 검사 결과를 기다리는 저녁"})
+        pairs = D.similar_names(names, min_jaccard=0.3)
+        self.assertEqual(len({(a, b) for _j, a, b in pairs}), len(pairs))
+        self.assertEqual([j for j, _a, _b in pairs], sorted((j for j, _a, _b in pairs), reverse=True))
+        self.assertTrue(all(a < b for _j, a, b in pairs))
+
+    def test_comparing_two_sets_does_not_pair_inside_either_set(self):
+        old = {"10": "병원 대기실에서 검사 결과를 기다리는 시간", "11": "병원 대기실에서 검사 결과를 기다리는 저녁"}
+        new = {"n1": "병원 대기실에서 검사 결과를 기다리는 아침", "n2": "새벽 열차가 긴 터널을 빠져나오는 순간"}
+        found = {(a, b) for _j, a, b in D.similar_names(new, old)}
+        self.assertEqual(found, {("n1", "10"), ("n1", "11")})
+
+    def test_different_scenes_are_not_flagged(self):
+        self.assertEqual(D.similar_names({"3": self.NAMES["3"], "4": self.NAMES["4"]}), [])
+
+
 class Windows(unittest.TestCase):
     def ledger(self, cats):
         return {"scenes": {str(i + 1): {"name": f"장면{i}", "category": c, "words": ["가가", "나나"], "link": "x"} for i, c in enumerate(cats)}}

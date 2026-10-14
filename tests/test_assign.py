@@ -27,7 +27,8 @@ def pool_of(per_category=20):
     pool, n = [], 0
     for ci, c in enumerate(D.CATEGORIES):
         for j in range(per_category):
-            pool.append({"id": f"s{ci:02d}{j:02d}", "name": f"{c} 장면 {j}번", "category": c, "words": [hw(2 * n), hw(2 * n + 1)]})
+            name = " ".join(hw(7000 + 3 * n + k) for k in range(3))      # 이름끼리 글자가 겹치지 않게
+            pool.append({"id": f"s{ci:02d}{j:02d}", "name": name, "category": c, "words": [hw(2 * n), hw(2 * n + 1)]})
             n += 1
     return pool
 
@@ -73,6 +74,18 @@ class Pool(unittest.TestCase):
         problems = "\n".join(A.pool_problems(pool, existing_texts={7: f"기존 글에 {pool[6]['words'][0]} 가 있습니다"}, existing_words={pool[8]["words"][1]}))
         for needle in ("같이 있습니다", "이름이", "범주 '없는 범주'", "필수어는 2~3개", "기존 오늘 단락 1곳", "기존 장부의 필수어"):
             self.assertIn(needle, problems)
+
+
+    def test_similar_names_are_found_between_candidates_and_against_the_ledger(self):
+        pool = pool_of(2)
+        pool[1]["name"] = pool[0]["name"].replace("가", "나", 1) + " 곁에서"        # 후보끼리 거의 같은 이름
+        old = {"11": "병원 대기실에서 검사 결과를 기다리는 시간"}
+        pool[2]["name"] = "병원 대기실에서 수술 결과를 기다리는 시간"                # 기존 장부와 비슷한 이름
+        problems = "\n".join(A.pool_problems(pool, existing_names=old))
+        self.assertIn(f"{pool[0]['id']} ", problems)
+        self.assertIn("이름이 비슷합니다", problems)
+        self.assertIn("기존 11일의 장면", problems)
+        self.assertEqual(A.pool_problems(pool_of(3), existing_names=old), [])
 
 
 class Menus(unittest.TestCase):

@@ -14,6 +14,7 @@
   분포         첫 어절, 둘째 문장의 첫 어절, 마지막 네 글자가 한쪽으로 쏠리지 않았는지 본다.
   훑어볼 목록  첫 문장에서 드문 낱말을 둘 이상 같이 쓰는 쌍을 뽑는다. 장면이 비슷할 수 있는 후보이며 사람이 훑는다(통과 기준이 아니다).
   창과 길      장면의 범주가 어느 7일, 30일, 길의 연속 10개 안에서 몰리지 않았는지 본다.
+  장면 이름    장부의 장면 이름이 서로 비슷한 쌍(NAME_SIMILAR)을 찾는다. 본문 글자로는 못 잡는 같은 장면을 이름이 드러낸다.
 """
 import argparse
 import json
@@ -36,6 +37,7 @@ MIN_SAMPLES = 50        # 분포는 단락이 이보다 적으면 보지 않는�
 CATEGORY_SHARE = 0.08   # 장면 범주 하나의 전체 비중
 WINDOWS = ((7, 2), (30, 6))   # (연속 일수, 같은 범주가 나올 수 있는 최대 횟수)
 ROUTE_RUN = (10, 7)     # 길을 따라 읽을 때 연속 10개에 서로 다른 범주 7개 이상
+NAME_SIMILAR = 0.30     # 장면 이름 두 개의 글자 두 개씩 묶음 자카드가 이 값 이상이면 같은 장면일 수 있다
 CATEGORIES = ["가정·육아", "직장·일", "학교·청년", "의료·건강", "이동·교통", "디지털·소통", "돈·살림", "이웃·관계",
               "농어촌·자연", "날씨·계절", "의례·행사", "노년·돌봄", "상가·서비스", "여가·취미", "재난·사고", "공공·제도"]
 # 되풀이가 맞는 구절: 시편 표제 설명, 히브리어 시 형식 설명처럼 같은 사실을 같은 말로 쓰는 곳
@@ -208,6 +210,36 @@ def ledger_shape_problems(ledger: dict, existing_texts: dict = None) -> list:
             if hits:
                 out.append(f"필수어 '{w}' ({day}일)가 다른 날 {len(hits)}곳({', '.join(map(str, hits[:4]))}…)에 이미 있습니다")
     return out
+
+
+def name_grams(name: str) -> frozenset:
+    s = re.sub(r"\s+", "", name)
+    return frozenset(s[i:i + 2] for i in range(len(s) - 1))
+
+
+def similar_names(names: dict, others: dict = None, min_jaccard: float = NAME_SIMILAR) -> list:
+    """장면 이름이 비슷한 쌍. names={키: 이름}. others 가 있으면 names 와 others 사이만, 없으면 names 안에서만 본다.
+    글자 두 개씩 묶은 집합의 자카드 값이 min_jaccard 이상인 쌍을 큰 순서로 [(값, 키, 키)] 로 준다.
+    본문 글자로는 못 잡는 같은 장면을 이름으로는 잡는다(기존 1000일 이름에서 0.3 이상 11쌍, 대부분 같은 장면)."""
+    a = {k: name_grams(v) for k, v in names.items()}
+    b = {k: name_grams(v) for k, v in others.items()} if others is not None else a
+    index = defaultdict(set)                       # 글자 묶음 -> b 의 키: 아무것도 안 겹치는 쌍은 아예 보지 않는다
+    for k, g in b.items():
+        for x in g:
+            index[x].add(k)
+    def order(k):                                  # 일차 문자열은 숫자 순서로
+        return (0, int(k), "") if str(k).isdigit() else (1, 0, str(k))
+    out = []
+    for ka, ga in a.items():
+        near = Counter(k for x in ga for k in index.get(x, ()))
+        for kb, shared in near.items():
+            if others is None and order(kb) <= order(ka):
+                continue
+            union = len(ga) + len(b[kb]) - shared
+            j = shared / union if union else 0.0
+            if j >= min_jaccard:
+                out.append((round(j, 3), ka, kb))
+    return sorted(out, key=lambda t: (-t[0], order(t[1]), order(t[2])))
 
 
 def scene_problems(ledger: dict, texts: dict) -> list:

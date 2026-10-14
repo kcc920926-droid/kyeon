@@ -102,5 +102,32 @@ class Build(unittest.TestCase):
         self.assertIn("범주 비중", text)
 
 
+class RealLedger(unittest.TestCase):
+    """저장소의 ledger/scenes.json 이 plan.json 과 맞는지. 파일이 없으면 건너뛴다."""
+
+    @classmethod
+    def setUpClass(cls):
+        path = ROOT / "ledger" / "scenes.json"
+        if not path.is_file():
+            raise unittest.SkipTest("ledger/scenes.json 이 없습니다")
+        cls.ledger = json.loads(path.read_text(encoding="utf-8"))
+        cls.plan = json.loads((ROOT / "data" / "plan.json").read_text(encoding="utf-8"))
+        cls.texts = L.today_texts(cls.plan)
+
+    def test_one_scene_for_every_day_that_has_an_today_paragraph(self):
+        self.assertEqual(sorted(int(d) for d in self.ledger["scenes"]), sorted(self.texts))
+
+    def test_shape_and_exclusivity_of_the_scenes_that_have_required_words(self):
+        ok = {k: v for k, v in self.ledger["scenes"].items() if not v.get("review")}
+        self.assertGreater(len(ok), 100)
+        self.assertEqual(dupcheck.ledger_shape_problems({"scenes": ok}, self.texts), [])
+        self.assertEqual(dupcheck.scene_problems({"scenes": ok}, {d: t for d, t in self.texts.items() if str(d) in ok}), [])
+
+    def test_every_scene_has_a_category_a_name_and_a_link(self):
+        for d, s in self.ledger["scenes"].items():
+            self.assertIn(s["category"], dupcheck.CATEGORIES, d)
+            self.assertTrue(4 <= len(s["name"]) <= 40 and 4 <= len(s["link"]) <= 80, d)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -121,8 +121,11 @@ def report(ledger: dict, order: list = None, orders: dict = None) -> str:
     sc = ledger["scenes"]
     cats = Counter(s["category"] for s in sc.values())
     n = len(sc)
-    lines = [f"장면 {n}개, 필수어를 둘 못 얻어 겹칠 수 있는 장면 {sum(1 for s in sc.values() if s.get('review'))}개",
+    lines = [f"장면 {n}개, 필수어를 둘 못 얻은 장면 {sum(1 for s in sc.values() if s.get('review'))}개(기존 글에 흔한 낱말뿐이라는 뜻이고 겹친다는 뜻은 아닙니다)",
              "범주 비중: " + ", ".join(f"{c} {k} ({k * 100 / n:.1f}%)" for c, k in cats.most_common())]
+    pairs = dupcheck.similar_names({d: s["name"] for d, s in sc.items()})
+    lines.append(f"이름이 비슷한 쌍 {len(pairs)}개(같은 장면일 수 있으니 훑어볼 것)")
+    lines += [f"  {j:.2f}  {a}일 '{sc[a]['name']}' ↔ {b}일 '{sc[b]['name']}'" for j, a, b in pairs[:8]]
     order = order or sorted(int(d) for d in sc)
     shape = [p for p in dupcheck.ledger_shape_problems({"scenes": {k: v for k, v in sc.items() if not v.get("review")}})]
     win = dupcheck.window_problems(ledger, order)

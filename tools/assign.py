@@ -66,8 +66,9 @@ def plan_categories(n: int, old_counts: dict, old_total: int = None, windows=dup
     return out
 
 
-def pool_problems(pool: list, existing_texts: dict = None, existing_words: set = None) -> list:
-    """장면 후보 풀의 문제 목록: 짜임, 필수어의 배타성(다른 후보와 기존 오늘 단락)."""
+def pool_problems(pool: list, existing_texts: dict = None, existing_words: set = None, existing_names: dict = None,
+                  name_limit: float = dupcheck.NAME_SIMILAR) -> list:
+    """장면 후보 풀의 문제 목록: 짜임, 필수어의 배타성(다른 후보와 기존 오늘 단락), 이름이 비슷한 장면(후보끼리, 기존 장부와)."""
     out, ids, owner, names = [], set(), {}, {}
     for x in pool:
         xid = x.get("id")
@@ -100,6 +101,12 @@ def pool_problems(pool: list, existing_texts: dict = None, existing_words: set =
         for w, xid in owner.items():
             if w in existing_words:
                 out.append(f"{xid}: 필수어 '{w}' 는 기존 장부의 필수어입니다")
+    named = {x["id"]: x["name"] for x in pool if x.get("id") and x.get("name")}
+    for j, a, b in dupcheck.similar_names(named, min_jaccard=name_limit):
+        out.append(f"{a} '{named[a]}' 와 {b} '{named[b]}' 는 이름이 비슷합니다({j:.2f})")
+    if existing_names:
+        for j, a, b in dupcheck.similar_names(named, existing_names, min_jaccard=name_limit):
+            out.append(f"{a} '{named[a]}' 는 기존 {b}일의 장면 '{existing_names[b]}' 와 이름이 비슷합니다({j:.2f})")
     return out
 
 
@@ -165,10 +172,12 @@ def main(argv=None):
         pool = json.loads(Path(a.check_pool).read_text(encoding="utf-8"))
         plan = json.loads(Path(a.plan).read_text(encoding="utf-8"))
         texts = {d: t for d, l, t in dupcheck.blocks_of(plan, "오늘")}
-        words = set()
+        words, names = set(), {}
         if Path(a.ledger).is_file():
-            words = {w for s in json.loads(Path(a.ledger).read_text(encoding="utf-8"))["scenes"].values() for w in s.get("words", [])}
-        errs = pool_problems(pool, texts, words)
+            scenes = json.loads(Path(a.ledger).read_text(encoding="utf-8"))["scenes"]
+            words = {w for s in scenes.values() for w in s.get("words", [])}
+            names = {d: s["name"] for d, s in scenes.items()}
+        errs = pool_problems(pool, texts, words, names)
         print("\n".join(errs[:30]) if errs else f"풀 점검: 통과 ({len(pool)}개)", Counter(x["category"] for x in pool) if not errs else "")
         return 1 if errs else 0
     if a.menus and a.cats:
