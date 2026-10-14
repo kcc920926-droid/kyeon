@@ -1,0 +1,12 @@
+# 확장 작업 자료 (앱이 읽지 않습니다)
+
+3650일 확장(`docs/EXPANSION.md`)의 작업 자료입니다. `data/plan.json`과 달리 앱이 읽지 않고 업데이트로 배포되지도 않습니다.
+
+| 파일 | 내용 |
+|---|---|
+| `pool.json` | 장면 후보 풀. 후보마다 `{id, name, category, words}`. 필수어는 기존 오늘 단락 1000개 어디에도 없고 후보끼리도 겹치지 않습니다. 시범 60일에 쓴 12개 범주 435개 |
+| `year1_categories.json` | 새 날 365일의 범주 순서(`tools/assign.py --categories 365`). 기존 장부의 범주 쏠림을 새 날로 바로잡도록 정했습니다 |
+| `pilot/days.json` | 시범 60일(1001~1060일). plan.json 과 같은 한 날 한 줄 형식. 아직 plan.json 에 합치지 않았습니다 |
+| `pilot/ledger.json` | 시범 60일의 장면 장부 추가분. 합치면 `ledger/scenes.json` 에 더합니다 |
+
+만드는 순서와 점검은 `tools/assemble.py` 의 설명을 보세요.
