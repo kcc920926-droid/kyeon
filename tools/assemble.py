@@ -176,15 +176,20 @@ def assemble_day(item: dict, c: dict, db: dict, tokenize, freq: dict, T: float =
     return {k: d[k] for k in DAY_KEYS if k in d}
 
 
-def ledger_entries(items: list, comments: list, pool_by_id: dict, tokenize=None) -> dict:
-    """새 날의 장부 추가분 {일차 문자열: {name, category, words, link}}. 고른 후보의 이름, 범주, 필수어를 그대로 옮긴다."""
+def ledger_entries(items: list, comments: list) -> dict:
+    """새 날의 장부 추가분 {일차 문자열: {name, category, words, link}}. 고른 후보의 이름과 필수어, 그 날에 배정된 범주를 옮긴다."""
     out = {}
     for it, c in zip(items, comments):
         if not it.get("menu"):
             continue
-        s = pool_by_id[c["scene"]]
-        out[str(it["day"])] = {"name": s["name"], "category": s["category"], "words": list(s["words"]), "link": c["link"].strip()}
+        s = next(m for m in it["menu"] if m["id"] == c["scene"])
+        out[str(it["day"])] = {"name": s["name"], "category": it["category"], "words": list(s["words"]), "link": c["link"].strip()}
     return out
+
+
+def assigned_scenes(items: list) -> dict:
+    """이 해에 어느 날이든 메뉴에 올라간 후보 {id: {id, name, words}}. 배정되지 않은 예비 후보는 뺀다."""
+    return {m["id"]: m for it in items for m in it.get("menu", [])}
 
 
 def final_problems(new_days: list, plan: dict, ledger: dict = None, additions: dict = None, orders: dict = None,
@@ -210,7 +215,9 @@ def final_problems(new_days: list, plan: dict, ledger: dict = None, additions: d
         merged = {**ledger, "scenes": {**ledger["scenes"], **additions}}
         texts = {d: t for d, _l, t in dupcheck.blocks_of(plus, "오늘")}
         out += dupcheck.ledger_shape_problems({"scenes": additions}, texts)
-        out += dupcheck.scene_problems(merged, {d["day"]: texts[d["day"]] for d in new_days if d["day"] in texts})   # 기존 장부의 필수어도 새 글에 쓰면 안 된다
+        # 새 날끼리만 본다. 기존 장부의 필수어는 새 글에서 막지 않는다(기존 글에서 고른 낱말이라 세례, 형상 같은 성경 낱말이 섞여 있다.
+        # 기존 장면과 겹치는 것은 후보의 필수어가 기존 글 어디에도 없다는 점검과 이름 비교가 막는다)
+        out += dupcheck.scene_problems({"scenes": additions}, {d["day"]: texts[d["day"]] for d in new_days if d["day"] in texts})
         order = [d["day"] for d in new_days]
         out += dupcheck.window_problems({"scenes": additions}, order, share=1.0)
         if orders is not None:
@@ -268,8 +275,7 @@ def main(argv=None):
         return 0
     if a.check or a.assemble:
         directory = Path(a.check or a.assemble)
-        pool = _read(a.pool) if a.pool else []
-        by = {x["id"]: x for x in pool}
+        by = assigned_scenes([i for f in _chunk_files(directory, "items") for i in _read(f)])
         problems, pairs = [], []
         for f in _chunk_files(directory, "items"):
             cf = directory / f.name.replace("items_", "commentary_")
@@ -297,10 +303,9 @@ def main(argv=None):
         days = [assemble_day(it, c, db, tokenize, freq) for it, c in pairs]
         plan = _read(a.plan)
         ledger = _read(a.ledger) if Path(a.ledger).is_file() else None
-        additions = ledger_entries([p[0] for p in pairs], [p[1] for p in pairs], by) if pool else {}
+        additions = ledger_entries([p[0] for p in pairs], [p[1] for p in pairs])
         import ledger as ledger_tool
         plus = {**plan, "days": plan["days"] + days}
-        merged = {**(ledger or {"scenes": {}}), "scenes": {**(ledger or {"scenes": {}})["scenes"], **additions}}
         orders = {"old": ledger_tool.route_orders(plan), "new": ledger_tool.route_orders(plus)} if ledger and additions else None
         final = final_problems(days, plan, ledger, additions, orders)
         if final:

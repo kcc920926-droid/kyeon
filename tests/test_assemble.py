@@ -44,10 +44,10 @@ def chunk(book="창세기", rng="1:1-3", ref="창세기 1:1–3", era="beginning
     return {"id": f"{book}:{rng.split('-')[0]}", "book": book, "range": rng, "ref": ref, "n": 3, "section": section, "stream": "율법", "era": era, "density": "normal", "short": True}
 
 
-TODAY = ("등대가 보이는 항구에서 새벽 어선이 그물을 걷는 시간이 옵니다. 선장은 말없이 닻줄을 감습니다. "
+TODAY = ("집어등이 켜진 항구에서 새벽 통발이 그물을 걷는 시간이 옵니다. 선장은 말없이 닻줄을 감습니다. "
          "그 사람에게 빛이 있으라는 말은 거창한 선언이 아니라 오늘 첫 항로를 비추는 작은 불빛입니다.")
-LINK = "본문의 빛 ↔ 등대의 불빛"
-POOL = [{"id": "s0001", "name": "새벽 항구에서 그물을 걷는 어선", "category": "농어촌·자연", "words": ["등대", "어선"]},
+LINK = "본문의 빛 ↔ 집어등의 불빛"
+POOL = [{"id": "s0001", "name": "새벽 항구에서 그물을 걷는 통발", "category": "농어촌·자연", "words": ["집어등", "통발"]},
         {"id": "s0002", "name": "야간 편의점 계산대에 선 점원", "category": "상가·서비스", "words": ["계산대", "점원"]}]
 
 
@@ -83,7 +83,7 @@ class Days(unittest.TestCase):
         self.assertEqual(it["verses"][0][:2], [1, 1])
         self.assertEqual(it["category"], "농어촌·자연")
         self.assertEqual([m["id"] for m in it["menu"]], ["s0001", "s0002"])
-        self.assertEqual(it["menu"][0]["words"], ["등대", "어선"])
+        self.assertEqual(it["menu"][0]["words"], ["집어등", "통발"])
         self.assertNotIn("menu", item(with_menu=False))
 
 
@@ -106,7 +106,7 @@ class Commentary(unittest.TestCase):
         c["blocks"][0]["label"] = "흔한 읽기"
         self.assertIn("블록 라벨", self.problems(c))
         self.assertIn("블록이 3개", self.problems(commentary(format=2)))
-        c3 = commentary(format=3, blocks=[{"label": "한 단어: 등대", "text": "등대라는 말은 어두운 바다에서 방향을 잡아 주는 불을 뜻합니다. 옛 사람은 이 말을 들으면 먼 불빛을 떠올렸습니다. 배가 돌아올 길이 거기서 시작된다고 믿었기 때문입니다."},
+        c3 = commentary(format=3, blocks=[{"label": "한 단어: 집어등", "text": "집어등라는 말은 어두운 바다에서 방향을 잡아 주는 불을 뜻합니다. 옛 사람은 이 말을 들으면 먼 불빛을 떠올렸습니다. 배가 돌아올 길이 거기서 시작된다고 믿었기 때문입니다."},
                                          {"label": "오늘", "text": TODAY}])
         self.assertEqual(A.check_commentary(c3, item()), [])
         c3["blocks"][0]["label"] = "한 단어: 아주아주아주긴낱말입니다"
@@ -168,8 +168,8 @@ class Assemble(unittest.TestCase):
             A.assemble_day(it, commentary(), DB, fake_tokenize, fake_freq())
 
     def test_ledger_entries_copy_the_chosen_scene(self):
-        got = A.ledger_entries([item()], [commentary()], {x["id"]: x for x in POOL})
-        self.assertEqual(got, {"1001": {"name": "새벽 항구에서 그물을 걷는 어선", "category": "농어촌·자연", "words": ["등대", "어선"], "link": LINK}})
+        got = A.ledger_entries([item()], [commentary()])
+        self.assertEqual(got, {"1001": {"name": "새벽 항구에서 그물을 걷는 통발", "category": "농어촌·자연", "words": ["집어등", "통발"], "link": LINK}})
 
     def test_written_days_read_back_one_line_per_day(self):
         d = A.assemble_day(item(), commentary(), DB, fake_tokenize, fake_freq())
@@ -206,11 +206,19 @@ class Final(unittest.TestCase):
         broken = dict(self.day, blocks=[])
         self.assertTrue(any("day_ok" in p for p in A.final_problems([broken], self.plan)))
 
-    def test_a_scene_that_collides_with_another_day_is_found(self):
-        ledger = {"scenes": {"5": {"name": "다른 장면 이름입니다", "category": "직장·일", "words": ["등대", "항로"], "link": "연결고리 한 줄"}}}
-        additions = {"1001": {"name": "새벽 항구에서 그물을 걷는 어선", "category": "농어촌·자연", "words": ["등대", "어선"], "link": LINK}}
-        problems = "\n".join(A.final_problems([self.day], self.plan, ledger, additions, baseline=self.baseline))
-        self.assertIn("등대", problems)
+    def test_the_required_words_of_old_days_are_not_enforced_but_a_clash_with_an_old_text_is(self):
+        old_ledger = {"scenes": {"5": {"name": "다른 장면 이름입니다", "category": "직장·일", "words": ["집어등", "항로"], "link": "연결고리 한 줄"}}}
+        additions = {"1001": {"name": "새벽 항구에서 그물을 걷는 통발", "category": "농어촌·자연", "words": ["집어등", "통발"], "link": LINK}}
+        # 기존 장부의 필수어(집어등)를 새 글이 써도 막지 않는다
+        self.assertEqual(A.final_problems([self.day], self.plan, old_ledger, additions, baseline=self.baseline), [])
+        # 새 장면의 필수어가 기존 오늘 단락에 이미 있으면 막는다
+        clash = {"1001": dict(additions["1001"], words=["기도", "통발"])}
+        problems = " ".join(A.final_problems([self.day], self.plan, old_ledger, clash, baseline=self.baseline))
+        self.assertIn("기도", problems)
+
+    def test_assigned_scenes_leave_out_the_reserve_candidates(self):
+        items = [item(), dict(item(), day=1002)]
+        self.assertEqual(sorted(A.assigned_scenes(items)), ["s0001", "s0002"])
 
 
 if __name__ == "__main__":
