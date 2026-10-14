@@ -41,7 +41,7 @@ import zlib
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-__version__ = "0.3.0"   # 버전의 유일한 원본. 릴리스마다 올린다(docs/RELEASING.md)
+__version__ = "0.3.1"   # 버전의 유일한 원본. 릴리스마다 올린다(docs/RELEASING.md)
 APP = "Kyeon"
 LEGACY_APP = "DailyVerseWidget"  # 켠으로 이름을 바꾸기 전 버전의 자동 실행 값(설치·제거 때 함께 정리)
 BASE = Path(__file__).resolve().parent

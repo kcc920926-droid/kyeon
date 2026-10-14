@@ -21,8 +21,7 @@ FORMATS = {  # 형식 번호: 블록 라벨
     2: ["흔한 읽기", "당시의 뜻", "오늘"],
     3: ["한 단어: {term}", "오늘"],
     4: ["그 자리에서", "오늘"],
-    5: ["그 당시"],  # 배경만(기도문은 쓰지 않는다)
-    6: ["큰 이야기 속에서", "오늘"],
+    5: ["큰 이야기 속에서", "오늘"],
 }
 
 
@@ -115,8 +114,8 @@ class PlanTests(unittest.TestCase):
             self.assertNotIn("question", d, d["day"])
             self.assertNotIn("기도", [b["label"] for b in d["blocks"]], d["day"])
             self.assertTrue(all(b["text"].strip() for b in d["blocks"]), d["day"])
-        self.assertEqual(sum(d["format"] == 5 for d in self.days), 175)
-        self.assertTrue(all(len(d["blocks"]) == 1 for d in self.days if d["format"] == 5))
+        self.assertEqual({d["format"] for d in self.days}, {1, 2, 3, 4, 5})
+        self.assertTrue(all(d["blocks"][-1]["label"] == "오늘" for d in self.days))   # 날마다 마지막 단락은 '오늘'
 
     def test_refs_are_unique_and_text_is_clean(self):
         self.assertEqual([r for r, n in Counter(d["ref"] for d in self.days).items() if n > 1], [])
