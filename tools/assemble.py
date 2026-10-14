@@ -51,6 +51,7 @@ FORBIDDEN = [
     ("물음표(수사 의문)", re.compile(r"\?")), ("줄바꿈", re.compile(r"\n")), ("이모지", re.compile("[\U0001F300-\U0001FAFF☀-➿]")),
     ("연결어미 뒤 쉼표", re.compile(r"(?:하고|지만|하며|면서|아서|어서|으나|는데|니까),\s")),
 ]
+QUOTA_MIN_BLOCKS = 100        # 해 단위(수백 블록)일 때만 번역투 비율을 본다
 DAY_KEYS = ("day", "section", "ref", "title", "era", "themes", "note", "parallels", "verses", "format", "blocks", "lv")
 
 
@@ -208,6 +209,12 @@ def final_problems(new_days: list, plan: dict, ledger: dict = None, additions: d
     if out:
         return out
     plus = {**plan, "days": plan["days"] + new_days}
+    new_texts = [b["text"] for d in new_days for b in d["blocks"]]
+    if len(new_texts) >= QUOTA_MIN_BLOCKS:           # 비율은 글이 충분히 많을 때만 본다(시험의 두세 날은 건너뛴다)
+        old_over = {r[0] for r in tlint.corpus_check([b["text"] for d in plan["days"] for b in d["blocks"]])}
+        out += [f"새 글의 번역투 비율이 넘습니다 {rid}({label}): {have}블록, 허용 {allow}블록" for rid, label, have, allow in tlint.corpus_check(new_texts)]
+        out += [f"합친 글의 번역투 비율이 넘습니다 {rid}({label}): {have}블록, 허용 {allow}블록"
+                for rid, label, have, allow in tlint.corpus_check([b["text"] for d in plus["days"] for b in d["blocks"]]) if rid not in old_over]
     before = baseline if baseline is not None else set(dupcheck.corpus_problems(plan))
     out += [p for p in dupcheck.corpus_problems(plus) if p not in before]
     if ledger is not None and additions:

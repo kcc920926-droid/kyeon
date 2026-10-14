@@ -53,6 +53,23 @@ class Rules(unittest.TestCase):
         self.assertTrue(any(r[0] == "L-5" for r in tlint.corpus_check(texts)))
 
 
+class Hedges(unittest.TestCase):
+    """추정을 흐리는 말투가 날마다 같은 틀로 되풀이되지 않게 막는다(L-17, L-18)."""
+
+    def test_one_hedge_is_fine_but_two_of_the_same_formula_are_not(self):
+        one = "이 이름의 뜻은 풀이하는 이가 많습니다."
+        self.assertNotIn("L-17", ids(one))
+        self.assertIn("L-17", ids(one + " 이 말도 읽는 이가 많습니다."))
+        self.assertNotIn("L-18", ids("곁에서 듣던 사람은 놀랐을 법합니다. 그 소리가 멀리 퍼졌을 듯합니다."))
+        self.assertIn("L-18", ids("놀랐을 법합니다. 퍼졌을 듯합니다. 달려왔을 법합니다."))
+
+    def test_a_corpus_full_of_the_formula_trips_the_quota(self):
+        texts = ["평범한 문장입니다."] * 100 + ["이 이름은 보는 이가 많습니다."] * 10
+        self.assertTrue(any(r[0] == "L-17" for r in tlint.corpus_check(texts)))
+        texts = ["평범한 문장입니다."] * 100 + ["그 소리에 놀랐을 법합니다."] * 20
+        self.assertTrue(any(r[0] == "L-18" for r in tlint.corpus_check(texts)))
+
+
 class RouteNames(unittest.TestCase):
     """사용자에게 보이는 시기·테마의 이름과 설명도 번역투 없이 쓴다."""
 
