@@ -1,6 +1,6 @@
 """파도(해마다 새로 쓰는 묶음) 조립기. 골격의 하루치 + 에이전트가 쓴 해설을 plan 의 날로 합치고 점검한다.
 
-  python tools/assemble.py --prepare DIR --wave 0 [--limit 60] [--cats C --menus M --pool P]   쓸 날의 입력(본문, 범주, 장면 메뉴)을 조각 파일로 만든다
+  python tools/assemble.py --prepare DIR --wave 0 [--limit 60] [--skip 60] [--cats C --menus M --pool P]   쓸 날의 입력(본문, 범주, 장면 메뉴)을 조각 파일로 만든다
   python tools/assemble.py --check DIR                                                         DIR/commentary_NN.json 의 짜임과 문체, 장면 선택을 점검한다
   python tools/assemble.py --assemble DIR --out F                                              점검을 통과한 해설로 plan 의 날(lv 포함)과 장부 추가분을 만든다(kiwipiepy 필요)
 
@@ -188,11 +188,6 @@ def ledger_entries(items: list, comments: list) -> dict:
     return out
 
 
-def assigned_scenes(items: list) -> dict:
-    """이 해에 어느 날이든 메뉴에 올라간 후보 {id: {id, name, words}}. 배정되지 않은 예비 후보는 뺀다."""
-    return {m["id"]: m for it in items for m in it.get("menu", [])}
-
-
 def final_problems(new_days: list, plan: dict, ledger: dict = None, additions: dict = None, orders: dict = None,
                    baseline: set = None) -> list:
     """새 날을 기존 plan 과 합쳐 점검한다. 새 날이 일으키는 문제만 돌려준다.
@@ -253,6 +248,7 @@ def main(argv=None):
     ap.add_argument("--wave", type=int, default=0)
     ap.add_argument("--size", type=int, default=365)
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--skip", type=int, default=0, help="--prepare: 해의 앞 N일은 이미 썼으니 건너뛴다")
     ap.add_argument("--per-agent", type=int, default=30)
     ap.add_argument("--cats")
     ap.add_argument("--menus")
@@ -266,9 +262,12 @@ def main(argv=None):
         out_dir = Path(a.prepare)
         out_dir.mkdir(parents=True, exist_ok=True)
         days = day_numbers(_read(a.skeleton)["chunks"], a.strategy, a.wave, a.size, a.limit)
-        pool = _read(a.pool) if a.pool else None
-        cats = _read(a.cats)[:len(days)] if a.cats else None
+        cats = _read(a.cats)[:len(days)] if a.cats else None        # cats, menus 는 그 해의 첫 날부터 맞춘 목록이고 --skip 이 days 와 함께 자른다
         menus = _read(a.menus)[:len(days)] if a.menus else None
+        days = days[a.skip:]
+        cats = cats[a.skip:] if cats else None
+        menus = menus[a.skip:] if menus else None
+        pool = _read(a.pool) if a.pool else None
         items = items_for(days, bible.load_db(a.bible), cats, menus, pool)
         for n, i in enumerate(range(0, len(items), a.per_agent), 1):
             (out_dir / f"items_{n:02d}.json").write_text(json.dumps(items[i:i + a.per_agent], ensure_ascii=False, indent=1), encoding="utf-8")
@@ -276,7 +275,6 @@ def main(argv=None):
         return 0
     if a.check or a.assemble:
         directory = Path(a.check or a.assemble)
-        by = assigned_scenes([i for f in _chunk_files(directory, "items") for i in _read(f)])
         problems, pairs = [], []
         for f in _chunk_files(directory, "items"):
             cf = directory / f.name.replace("items_", "commentary_")
@@ -289,7 +287,7 @@ def main(argv=None):
                 problems.append(f"{cf.name}: 일차 순서와 개수가 입력과 다릅니다")
                 continue
             for it, c in zip(items, comments):
-                problems += check_commentary(c, it, by or None)
+                problems += check_commentary(c, it)       # 같은 날 메뉴의 다른 후보만 막는다. 다른 날과의 겹침은 조립에서 고른 장면끼리 본다
             pairs += list(zip(items, comments))
         if problems:
             print("\n".join(problems[:40]), f"\n… 문제 {len(problems)}개" if len(problems) > 40 else "")

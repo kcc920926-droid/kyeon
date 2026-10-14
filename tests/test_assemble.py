@@ -182,6 +182,27 @@ class Assemble(unittest.TestCase):
             self.assertEqual(sum(1 for ln in raw.split("\n") if ln.startswith('{"day":')), 2)
 
 
+class PrepareCli(unittest.TestCase):
+    def test_skip_drops_the_first_days_of_the_year_from_days_categories_and_menus_together(self):
+        chunks = [chunk(), chunk(rng="1:14-18", ref="창세기 1:14–18"), chunk(rng="2:1-1", ref="창세기 2:1")]
+        with tempfile.TemporaryDirectory() as tmp:
+            t = Path(tmp)
+            (t / "sk.json").write_text(json.dumps({"chunks": chunks}), encoding="utf-8")
+            raw = {b: {str(c): {str(v): x for v, x in vs.items()} for c, vs in chs.items()} for b, chs in DB.items()}
+            (t / "krv.json").write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+            (t / "cats.json").write_text(json.dumps(["직장·일", "농어촌·자연", "상가·서비스"], ensure_ascii=False), encoding="utf-8")
+            (t / "menus.json").write_text(json.dumps([["x1"], ["s0001", "s0002"], ["s0002"]]), encoding="utf-8")
+            (t / "pool.json").write_text(json.dumps(POOL + [{"id": "x1", "name": "처음 날의 장면", "category": "직장·일", "words": ["가가", "나나"]}], ensure_ascii=False), encoding="utf-8")
+            out = t / "w"
+            argv = ["--prepare", str(out), "--strategy", "canon", "--size", "3", "--skeleton", str(t / "sk.json"), "--bible", str(t / "krv.json"),
+                    "--cats", str(t / "cats.json"), "--menus", str(t / "menus.json"), "--pool", str(t / "pool.json")]
+            self.assertEqual(A.main(argv + ["--skip", "1"]), 0)
+            items = json.loads((out / "items_01.json").read_text(encoding="utf-8"))
+            self.assertEqual([i["day"] for i in items], [1002, 1003])
+            self.assertEqual([i["category"] for i in items], ["농어촌·자연", "상가·서비스"])
+            self.assertEqual([m["id"] for m in items[0]["menu"]], ["s0001", "s0002"])
+
+
 class Final(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -215,11 +236,6 @@ class Final(unittest.TestCase):
         clash = {"1001": dict(additions["1001"], words=["기도", "통발"])}
         problems = " ".join(A.final_problems([self.day], self.plan, old_ledger, clash, baseline=self.baseline))
         self.assertIn("기도", problems)
-
-    def test_assigned_scenes_leave_out_the_reserve_candidates(self):
-        items = [item(), dict(item(), day=1002)]
-        self.assertEqual(sorted(A.assigned_scenes(items)), ["s0001", "s0002"])
-
 
 if __name__ == "__main__":
     unittest.main()
