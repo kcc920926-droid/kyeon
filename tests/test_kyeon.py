@@ -92,7 +92,9 @@ class PlanTests(unittest.TestCase):
         cls.days = cls.plan["days"]
 
     def test_size_and_numbers(self):
-        self.assertEqual([d["day"] for d in self.days], list(range(1, 1001)))
+        # 처음 1000일은 plan.json, 그 뒤 날은 data/plan-<첫 일차>.json 에서 이어 붙는다. 번호는 빈틈없이 이어져야 한다
+        self.assertGreaterEqual(len(self.days), 1000)
+        self.assertEqual([d["day"] for d in self.days], list(range(1, len(self.days) + 1)))
 
     def test_every_day_is_complete(self):
         self.assertEqual([d["day"] for d in self.days if not K.day_ok(d)], [])
@@ -126,19 +128,22 @@ class PlanTests(unittest.TestCase):
                 self.assertNotIn("&nbsp;", t)
 
     def test_composition(self):
-        secs = Counter(d["section"] for d in self.days)
+        first = self.days[:1000]            # 처음 1000일의 짜임. 새로 붙는 날들(남은 성경)은 시편이 없고 복음서가 적다
+        secs = Counter(d["section"] for d in first)
         self.assertEqual(secs["시편"], 225)
         self.assertEqual(secs["복음서"], 225)
         # 시편과 복음서가 번갈아 나온다(그 사이에 다른 책이 끼어도 시편 다음 복음서 순서는 유지)
-        pg = [d["section"] for d in self.days if d["section"] in ("시편", "복음서")]
+        pg = [d["section"] for d in first if d["section"] in ("시편", "복음서")]
         self.assertEqual(pg[:6], ["시편", "복음서"] * 3)
-        self.assertEqual(len({d["ref"].split()[0] for d in self.days}), 66)
+        self.assertEqual(len({d["ref"].split()[0] for d in first}), 66)
 
     def test_parallels_are_lists_of_labels(self):
         for d in self.days:
-            if "parallels" in d:
-                self.assertEqual(d["section"], "복음서")
-                self.assertTrue(all(isinstance(p, str) and p for p in d["parallels"]))
+            if "parallels" in d:           # 복음서 병행뿐 아니라 열왕기와 역대기 같은 병행도 있을 수 있다
+                self.assertTrue(isinstance(d["parallels"], list) and d["parallels"])
+                self.assertTrue(all(isinstance(p, str) and p and p != d["ref"] for p in d["parallels"]))
+                if d["day"] <= 1000:
+                    self.assertEqual(d["section"], "복음서")
 
     def test_load_plan_rejects_gaps(self):
         with tempfile.TemporaryDirectory() as tmp:
