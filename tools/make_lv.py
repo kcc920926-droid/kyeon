@@ -13,7 +13,11 @@ n 단계에서는 코드 1..n 인 글자를 가린다. 단계가 올라갈수록
 다음에 2를 '중요한 낱말이면 2, 아니면 3'으로 가르고 3을 4로 옮긴다(migrate_verse). 이 둘을 합친 것이 build_day 다.
 
   python tools/make_lv.py --days build/days.json --out build/lv.json    days.json: [{"day", "title", "verses": [[장, 절, 글], ...]}]
-  python tools/make_lv.py --verify                                       plan.json 의 날 몇 개를 다시 계산해 지금 값과 같은지 본다
+  python tools/make_lv.py --verify [--all]                               plan.json 의 날을 다시 계산해 지금 값과 같은지 본다
+
+재현 시험(kiwipiepy 0.24.0, T=2.5): lv 가 있는 1000일 가운데 998일이 지금 값과 정확히 같다. 낱말 빈도(df)는 예전 계산과 10,913개 전부 같았다.
+같지 않은 2일(780, 977일)은 핵심 단어로 뽑힌 낱말만 다르다. 핵심 단어를 고르는 점수에 제목이 들어가는데, 처음 계산할 때는 제목이
+아직 없었거나(시편 198일은 빈 제목) 지금과 다른 임시 제목이었다. --verify 는 제목 없이 계산한 값과 같아도 같은 것으로 친다.
 
 kiwipiepy(Kiwi 형태소 분석기, LGPL-2.1)가 필요하다. 계산할 때만 쓰고 이 저장소와 배포물에는 넣지 않는다.
 임시 가상환경에서 `pip install kiwipiepy` 한 뒤 그 파이썬으로 실행한다. 핵심 키워드는 성경 전체에서 낱말이 나온 구절 수(df)로
@@ -32,7 +36,7 @@ import bible  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DF_CACHE = ROOT / "build" / "lv_df.json"
-IMPORTANCE = 3.5                          # 중요한 낱말의 문턱: 성경에서 낱말이 나온 구절 수의 로그 역수(idf)가 이 값 이상이면 중요하다
+IMPORTANCE = 2.5                          # 중요한 낱말의 문턱: 성경에서 낱말이 나온 구절 수의 로그 역수(idf)가 이 값 이상이면 중요하다. 지금 plan.json 의 lv 를 재현하는 값(2.48~2.58)
 
 CONTENT = {"NNG", "NNP", "NNB", "NR", "NP", "VV", "VA", "VX", "MM", "MAG", "XR", "IC", "SN", "SL", "SH"}
 KEY_TAGS = {"NNG", "NNP", "XR"}          # 핵심 키워드 후보(명사류)
@@ -107,10 +111,11 @@ def key_score(form, tag, title, in_passage, picked, freq):
     return s
 
 
-def base_levels(item: dict, tokenize, freq: dict):
-    """옛 방식의 0~3 코드. item: {"title", "verses": [[장, 절, 글], ...]}. -> (구절마다 단계 문자열 목록, 구절마다 핵심 키워드 목록)"""
+def base_levels(item: dict, tokenize, freq: dict, title=None):
+    """옛 방식의 0~3 코드. item: {"title", "verses": [[장, 절, 글], ...]}. -> (구절마다 단계 문자열 목록, 구절마다 핵심 키워드 목록)
+    title 을 따로 주면 핵심 단어를 고를 때 item 의 제목 대신 그것을 쓴다(제목 없이 계산하던 때를 재현할 때)."""
     verses = item["verses"]
-    title = item.get("title") or ""
+    title = (item.get("title") or "") if title is None else title
     toks_by_verse = [tokenize(t) for _c, _v, t in verses]
     in_passage = Counter(f for toks in toks_by_verse for f, tg, _s, _l in toks if tg in KEY_TAGS)
     picked = Counter()
@@ -202,9 +207,10 @@ def migrate_verse(text: str, old: str, title: str, tokenize, freq: dict, T=IMPOR
     return "".join(out)
 
 
-def build_day(item: dict, tokenize, freq: dict, T=IMPORTANCE):
-    """item 의 lv(0~4 코드)와 구절마다 핵심 단어를 계산한다. -> (구절마다 단계 문자열 목록, 구절마다 핵심 단어 목록)"""
-    old, keywords = base_levels(item, tokenize, freq)
+def build_day(item: dict, tokenize, freq: dict, T=IMPORTANCE, base_title=None):
+    """item 의 lv(0~4 코드)와 구절마다 핵심 단어를 계산한다. -> (구절마다 단계 문자열 목록, 구절마다 핵심 단어 목록)
+    base_title 은 base_levels 의 title 인자다(보통은 쓰지 않는다)."""
+    old, keywords = base_levels(item, tokenize, freq, base_title)
     title = item.get("title") or ""
     out = [s if MERGED.fullmatch(v[2]) else migrate_verse(v[2], s, title, tokenize, freq, T) for v, s in zip(item["verses"], old)]
     return out, keywords
@@ -233,22 +239,30 @@ def main(argv=None):
     ap.add_argument("--out")
     ap.add_argument("--verify", action="store_true")
     ap.add_argument("--sample", type=int, default=40)
+    ap.add_argument("--all", action="store_true", help="--verify 에서 표본이 아니라 lv 가 있는 날 전부를 본다")
+    ap.add_argument("--T", type=float, default=IMPORTANCE, help="중요한 낱말의 문턱")
     a = ap.parse_args(argv)
     tokenize, many = kiwi_tokenizer()
     freq = load_frequency(bible.load_db(a.bible), many)
     if a.verify:
         plan = json.loads(Path(a.plan).read_text(encoding="utf-8"))
         days = [d for d in plan["days"] if d.get("lv")]
-        step = max(1, len(days) // a.sample)
-        same = diff = 0
-        for d in days[::step]:
-            got, _kw = build_day(d, tokenize, freq)
+        if not a.all:
+            days = days[::max(1, len(days) // a.sample)]
+        same = blank = diff = 0
+        for d in days:
+            got, _kw = build_day(d, tokenize, freq, a.T)
             if got == d["lv"]:
                 same += 1
+                continue
+            # 지금 plan 의 lv 는 제목이 아직 없던 시편 198일에서 핵심 단어를 제목 없이 골랐다. 그 경우도 같은 값으로 친다.
+            got2, _kw = build_day(d, tokenize, freq, a.T, base_title="")
+            if got2 == d["lv"]:
+                blank += 1
             else:
                 diff += 1
                 print(f"{d['day']}일 {d['ref']}: 지금 값과 다릅니다")
-        print(f"다시 계산한 날 {same + diff}개 중 같은 날 {same}개, 다른 날 {diff}개")
+        print(f"T={a.T}: 다시 계산한 날 {len(days)}개 중 같은 날 {same}개, 제목 없이 계산한 날과 같은 날 {blank}개, 다른 날 {diff}개")
         return 1 if diff else 0
     if not (a.days and a.out):
         ap.error("--days 와 --out 이 필요합니다")
