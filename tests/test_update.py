@@ -379,6 +379,43 @@ class ApplyTests(Base):
                 K.apply_update(m, self.app, self.state_dir, current="0.1.0")
             self.assertEqual(self.tree(self.app), before)
 
+    def test_a_plan_part_file_arrives_with_the_update_and_is_read_after_plan_json(self):
+        write_files(self.app, files_for("0.1.0"))                       # plan.json 은 1일차 하나
+        files = files_for("0.5.0")
+        files["data/plan-2.json"] = json.dumps({"days": [{"day": 2}, {"day": 3}]}).encode()
+        loc = write_release(self.rel, "0.5.0", files)
+        m = K.parse_manifest(loc.read_bytes(), str(loc))
+        changed = K.apply_update(m, self.app, self.state_dir, current="0.1.0")
+        self.assertIn("data/plan-2.json", changed)
+        self.assertEqual([d["day"] for d in K.load_plan(self.app / "data" / "plan.json")["days"]], [1, 2, 3])
+
+    def test_a_plan_part_that_does_not_continue_the_plan_is_refused(self):
+        write_files(self.app, files_for("0.1.0"))
+        before = self.tree(self.app)
+        for part in ({"days": [{"day": 3}]}, {"days": [{"day": 1}]}, {"days": "x"}):    # 빈틈, 겹침, 모양이 다름
+            files = files_for("0.5.0")
+            files["data/plan-2.json"] = json.dumps(part).encode()
+            loc = write_release(self.rel, "0.5.0", files)
+            m = K.parse_manifest(loc.read_bytes(), str(loc))
+            with self.assertRaises(K.UpdateError):
+                K.apply_update(m, self.app, self.state_dir, current="0.1.0")
+            self.assertEqual(self.tree(self.app), before)
+
+    def test_a_changed_plan_part_is_checked_against_the_plan_files_already_installed(self):
+        files = files_for("0.1.0", PLAN_NEW)                            # 이미 2일치
+        files["data/plan-3.json"] = json.dumps({"days": [{"day": 3}]}).encode()
+        write_files(self.app, files)
+        new = files_for("0.5.0", PLAN_NEW)                              # plan.json 은 그대로, 3일 파일만 바뀜
+        new["data/plan-3.json"] = json.dumps({"days": [{"day": 3}, {"day": 4}]}).encode()
+        loc = write_release(self.rel, "0.5.0", new)
+        K.apply_update(K.parse_manifest(loc.read_bytes(), str(loc)), self.app, self.state_dir, current="0.1.0")
+        self.assertEqual([d["day"] for d in K.load_plan(self.app / "data" / "plan.json")["days"]], [1, 2, 3, 4])
+        new["data/plan-3.json"] = json.dumps({"days": [{"day": 4}]}).encode()      # 이번에는 2일 다음에 4일이 와서 빈틈
+        loc = write_release(self.rel, "0.6.0", {**new, "kyeon.py": app_src("0.6.0")})
+        with self.assertRaises(K.UpdateError):
+            K.apply_update(K.parse_manifest(loc.read_bytes(), str(loc)), self.app, self.state_dir, current="0.5.0")
+        self.assertEqual([d["day"] for d in K.load_plan(self.app / "data" / "plan.json")["days"]], [1, 2, 3, 4])
+
     def test_fonts_are_installed_when_they_look_like_fonts(self):
         files = files_for("0.5.0")
         files["fonts/F.otf"] = b"OTTO" + b"\x00" * 20
@@ -875,6 +912,23 @@ class ManifestTool(Base):
         with mock.patch.object(self.M, "ROOT", repo):
             v2, from_git = self.M.blobs_for_tag("v0.9.9")
         self.assertEqual(blobs, from_git)  # 작업 폴더와 태그의 내용이 같으면 같은 파일 묶음이 나온다
+
+    def test_plan_part_files_are_distributed_from_the_tag_and_from_the_folder(self):
+        repo = self.make_repo("0.9.9", name="parts")
+        write_files(repo, {"data/plan-2.json": b'{"days": []}', "data/plan-1001.json": b'{"days": []}', "data/plan-x.json": b"{}",
+                           "data/other.json": b"{}"})
+        self.git(repo, "add", "-A")
+        self.git(repo, "commit", "-q", "-m", "parts")
+        self.git(repo, "tag", "v0.9.9")
+        want = ["CHANGELOG.md", "README.md", "data/plan-1001.json", "data/plan-2.json", "data/plan.json", "fonts/F.otf", "fonts/LICENSE.txt", "kyeon.py"]
+        _v, from_dir = self.M.blobs_from_dir(repo)
+        with mock.patch.object(self.M, "ROOT", repo):
+            _v, from_git = self.M.blobs_for_tag("v0.9.9")
+            m = self.M.from_tag("v0.9.9")
+        self.assertEqual(sorted(from_dir), want)           # plan-x.json, other.json 은 올리지 않는다
+        self.assertEqual(sorted(from_git), want)
+        parsed = K.parse_manifest(json.dumps(m).encode("utf-8"), "https://raw.githubusercontent.com/o/r/main/latest.json")
+        self.assertIn("data/plan-1001.json", parsed["files"])      # 클라이언트도 이 경로를 허용한다
 
     def test_build_is_deterministic(self):
         blobs = {"kyeon.py": app_src("1.0.0"), "data/plan.json": b"{}", "README.md": b"r"}

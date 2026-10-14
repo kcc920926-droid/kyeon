@@ -20,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import dupcheck  # noqa: E402
+import planio  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 NOUNS = {"NNG", "NNP"}
@@ -157,7 +158,7 @@ def main(argv=None):
     ap.add_argument("--out")
     ap.add_argument("--report")
     a = ap.parse_args(argv)
-    plan = json.loads(Path(a.plan).read_text(encoding="utf-8"))
+    plan = planio.read_plan(a.plan)
     if a.prepare:
         print(f"{prepare(plan, Path(a.prepare), a.size)}개 조각을 {a.prepare} 에 썼습니다")
         return 0

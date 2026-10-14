@@ -148,6 +148,62 @@ class PlanTests(unittest.TestCase):
                 K.load_plan(p)
 
 
+class PlanParts(unittest.TestCase):
+    """plan.json 뒤에 plan-<첫 일차>.json 을 이어 붙여 읽는다."""
+
+    def write(self, tmp, name, days, **head):
+        (Path(tmp) / name).write_text(json.dumps({**head, "days": [{"day": d} for d in days]}), encoding="utf-8")
+
+    def test_parts_are_ordered_by_the_number_in_the_name_not_alphabetically(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.write(tmp, "plan.json", [1, 2], routes={"era": []})
+            self.write(tmp, "plan-10.json", [10, 11])          # 사전순으로는 plan-10 이 plan-3 보다 앞이다
+            self.write(tmp, "plan-3.json", list(range(3, 10)))
+            self.write(tmp, "plan-bad.json", [99])             # 모양이 다른 이름은 읽지 않는다
+            self.write(tmp, "plan-4.json.bak", [99])
+            plan = K.load_plan(Path(tmp) / "plan.json")
+            self.assertEqual([d["day"] for d in plan["days"]], list(range(1, 12)))
+            self.assertEqual([p.name for p in K.plan_part_files(Path(tmp) / "plan.json")], ["plan-3.json", "plan-10.json"])
+
+    def test_numbers_must_run_on_across_the_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.write(tmp, "plan.json", [1, 2])
+            self.write(tmp, "plan-3.json", [3, 4])
+            self.assertEqual([d["day"] for d in K.load_plan(Path(tmp) / "plan.json")["days"]], [1, 2, 3, 4])
+            self.write(tmp, "plan-5.json", [6])                 # 5일이 빠졌다
+            with self.assertRaises(ValueError):
+                K.load_plan(Path(tmp) / "plan.json")
+
+    def test_header_comes_from_plan_json_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.write(tmp, "plan.json", [1], translation="개역한글", routes={"era": [{"id": "a"}]})
+            self.write(tmp, "plan-2.json", [2], translation="다른 것", routes={"era": [{"id": "b"}]})
+            plan = K.load_plan(Path(tmp) / "plan.json")
+            self.assertEqual((plan["translation"], plan["routes"]["era"][0]["id"]), ("개역한글", "a"))
+
+    def test_a_part_with_the_wrong_shape_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.write(tmp, "plan.json", [1])
+            (Path(tmp) / "plan-2.json").write_text(json.dumps([{"day": 2}]), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                K.load_plan(Path(tmp) / "plan.json")
+
+    def test_explicit_parts_replace_the_folder_search(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.write(tmp, "plan.json", [1])
+            self.write(tmp, "plan-2.json", [2])
+            self.assertEqual([d["day"] for d in K.load_plan(Path(tmp) / "plan.json", [])["days"]], [1])
+
+    def test_routes_follow_the_day_order_across_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            first = {"era": [{"id": "a", "name": "가"}]}
+            (Path(tmp) / "plan.json").write_text(json.dumps({"routes": first, "days": [{"day": 1, "era": "a"}]}), encoding="utf-8")
+            (Path(tmp) / "plan-2.json").write_text(json.dumps({"days": [{"day": 2, "era": "a"}, {"day": 3}]}), encoding="utf-8")
+            routes = K.build_routes(K.load_plan(Path(tmp) / "plan.json"))
+            self.assertEqual({r["id"]: r["idxs"] for r in routes}["era:a"], [0, 1])
+            self.assertEqual(routes[0]["idxs"], [0, 1, 2])
+
+
 class WidgetTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

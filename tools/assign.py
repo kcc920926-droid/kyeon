@@ -22,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import dupcheck  # noqa: E402
+import planio  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CATEGORIES = dupcheck.CATEGORIES
@@ -170,7 +171,7 @@ def main(argv=None):
         return 1 if problems else 0
     if a.check_pool:
         pool = json.loads(Path(a.check_pool).read_text(encoding="utf-8"))
-        plan = json.loads(Path(a.plan).read_text(encoding="utf-8"))
+        plan = planio.read_plan(a.plan)
         texts = {d: t for d, l, t in dupcheck.blocks_of(plan, "오늘")}
         words, names = set(), {}
         if Path(a.ledger).is_file():

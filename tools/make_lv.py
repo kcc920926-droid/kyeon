@@ -33,6 +33,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bible  # noqa: E402
+import planio  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DF_CACHE = ROOT / "build" / "lv_df.json"
@@ -245,7 +246,7 @@ def main(argv=None):
     tokenize, many = kiwi_tokenizer()
     freq = load_frequency(bible.load_db(a.bible), many)
     if a.verify:
-        plan = json.loads(Path(a.plan).read_text(encoding="utf-8"))
+        plan = planio.read_plan(a.plan)
         days = [d for d in plan["days"] if d.get("lv")]
         if not a.all:
             days = days[::max(1, len(days) // a.sample)]

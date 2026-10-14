@@ -112,7 +112,9 @@ def main(argv):
     from pathlib import Path
     path = Path(__file__).resolve().parent.parent / "data" / "plan.json"
     show = int(argv[argv.index("--show") + 1]) if "--show" in argv else 0
-    plan = json.loads(path.read_text(encoding="utf-8"))
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import planio
+    plan = planio.read_plan(path)
     per_rule, blocks_hit, texts, shown = Counter(), 0, [], 0
     for d in plan["days"]:
         for k, b in enumerate(d["blocks"]):

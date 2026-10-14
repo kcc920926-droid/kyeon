@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import assign  # noqa: E402
 import bible  # noqa: E402
 import dupcheck  # noqa: E402
+import planio  # noqa: E402
 import routes  # noqa: E402
 import schedule  # noqa: E402
 import tlint  # noqa: E402
@@ -301,7 +302,7 @@ def main(argv=None):
         db = bible.load_db(a.bible)
         freq = make_lv.load_frequency(db, many)
         days = [assemble_day(it, c, db, tokenize, freq) for it, c in pairs]
-        plan = _read(a.plan)
+        plan = planio.read_plan(a.plan)
         ledger = _read(a.ledger) if Path(a.ledger).is_file() else None
         additions = ledger_entries([p[0] for p in pairs], [p[1] for p in pairs])
         import ledger as ledger_tool

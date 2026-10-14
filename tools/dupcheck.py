@@ -26,6 +26,9 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import planio  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 
 # 기준(지금 plan.json 이 통과하는 값으로 잡았다. 새 파도는 같은 값이거나 더 엄격해야 한다)
@@ -338,7 +341,7 @@ def main(argv=None):
     ap.add_argument("--ledger")
     ap.add_argument("--ledger-check")
     a = ap.parse_args(argv)
-    plan = json.loads(Path(a.plan).read_text(encoding="utf-8"))
+    plan = planio.read_plan(a.plan)
     if a.report:
         items = blocks_of(plan)
         today = {d: t for d, l, t in items if l == "오늘"}

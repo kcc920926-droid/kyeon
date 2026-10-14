@@ -25,6 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bible  # noqa: E402
+import planio  # noqa: E402
 import routes  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -266,7 +267,7 @@ def main(argv=None):
     ap.add_argument("--dump-runs")
     a = ap.parse_args(argv)
     db = bible.load_db(a.bible)
-    plan = json.loads(Path(a.plan).read_text(encoding="utf-8"))
+    plan = planio.read_plan(a.plan)
     covered = bible.covered(plan)
     if a.dump_runs:
         runs = runs_of(db, covered)
