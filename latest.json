@@ -1,27 +1,66 @@
 {
   "schema": 1,
   "app": "kyeon",
-  "version": "0.3.1",
-  "tag": "v0.3.1",
-  "released": "2026-10-14",
+  "version": "0.4.0",
+  "tag": "v0.4.0",
+  "released": "2026-10-15",
   "min_python": "3.8",
   "notes": [
-    "시편 175일에도 `오늘` 단락을 넣었습니다. 지금까지 배경만 나오던 날도 이제 오늘의 장면으로 이어집니다",
-    "해설 형식이 다섯 가지로 줄었습니다(배경만 쓰던 형식이 없어졌습니다)"
+    "읽는 계획이 1000일에서 3650일(성경 한 번 읽기)로 늘었습니다. 사본에 없는 11절을 뺀 모든 절이 한 번씩 나옵니다",
+    "새로 들어간 2650일의 해설도 AI가 썼습니다. 불확실한 설명은 빼거나 단정을 낮췄지만 앞 1000일처럼 따로 다시 확인하지는 않았습니다",
+    "설정 창에 본문 출처(성경전서 개역한글판, 대한성서공회, 1961)를 표시합니다. README의 본문 출처 설명도 대한성서공회 안내에 맞춰 고쳤습니다",
+    "계획표가 `data/plan.json`과 `data/plan-<첫 일차>.json`으로 나뉘었습니다. 업데이트는 새로 생긴 파일을 받아 이어 붙여 검사한 뒤 바꿉니다",
+    "시기별, 테마별, 갈래별 길도 3650일로 넓어졌습니다. 읽던 일차와 길별 자리는 그대로 이어집니다"
   ],
-  "base_url": "https://raw.githubusercontent.com/kcc920926-droid/kyeon/v0.3.1/",
+  "base_url": "https://raw.githubusercontent.com/kcc920926-droid/kyeon/v0.4.0/",
   "files": {
     "CHANGELOG.md": {
-      "sha256": "9142d79efaaa26ec010ee0647cf0fcd31f18e2fc5391698e315018aa1d828ba6",
-      "size": 3113
+      "sha256": "31e832ab940a1396399c65e1d5202b801d8b953b37cad08e0e658eb3525cdf85",
+      "size": 3972
     },
     "README.md": {
-      "sha256": "dc5b2d86f115be773176a1c7b526eb34b9e3b117059921e4695ca1f1c6d22343",
-      "size": 25295
+      "sha256": "1ebf3f893b5a8ecf433954847a1dbbc82594262dcc49504a1ec9a4f26bfd17ab",
+      "size": 27530
+    },
+    "data/plan-1001.json": {
+      "sha256": "3ab59ee6e96d59ccc2301596d5dfd76740258716db58e55cbc7d20f0a67029c8",
+      "size": 168191
+    },
+    "data/plan-1061.json": {
+      "sha256": "3582b4fc3bf28c224d5452a12dedb7d4d065d84b05f0db2c8723314a2255a8b6",
+      "size": 908886
+    },
+    "data/plan-1366.json": {
+      "sha256": "b3dc904f0f7f85c927d3ec3957551fa69ae002ce94c40c00efdfa4e29fee642b",
+      "size": 1084419
+    },
+    "data/plan-1731.json": {
+      "sha256": "907b4ce080f69bb3d82e5f18ff3ea9f410342fa271984b95d49f5d890b44d0fd",
+      "size": 1103794
+    },
+    "data/plan-2096.json": {
+      "sha256": "1f15172f9975aa6bf6c7dd5c78c77fa75e59a1c86ca2490d31223d724adfe582",
+      "size": 1085715
+    },
+    "data/plan-2461.json": {
+      "sha256": "4c7370d0802b33405a45b3048d0ff5c5c8e75d1e8780917ab71595002c0db9d3",
+      "size": 1103736
+    },
+    "data/plan-2826.json": {
+      "sha256": "4ebd86ff81a05b03937736d9e1681cafef834acab7ab85c3ad9fa3d7193351d1",
+      "size": 1146262
+    },
+    "data/plan-3191.json": {
+      "sha256": "3d9fd19ae53efd5eced5564ce9170c85cf83e4b83a91eda62dfc97e318aad8af",
+      "size": 1129825
+    },
+    "data/plan-3556.json": {
+      "sha256": "c7054cc09205010683a3283839aa16e0eeee5bab01bda3164a16f91de5b897b4",
+      "size": 294835
     },
     "data/plan.json": {
-      "sha256": "ce4c19597a29a3cd958c28d682035cb24d8bedbe17d89450352dd46024ec1bd0",
-      "size": 2893453
+      "sha256": "2e3efce48921066ac2d1b74f3c7dca9b67d8b85faa43fcb65b68101118ff45b9",
+      "size": 2893603
     },
     "fonts/LICENSE.txt": {
       "sha256": "ed9f0a23feb6862d517993a7896920bad42657f79894b37b30e3ba3f3d32bc1b",
@@ -36,8 +75,8 @@
       "size": 701
     },
     "kyeon.py": {
-      "sha256": "424a037e69c33c7b00b8e4e7474100084a649921888de6a3635e010950afc190",
-      "size": 139633
+      "sha256": "d0e87a63fc86e40a97901096879d3902f3d498c5b64f28c5ea7ed39e081323aa",
+      "size": 141886
     },
     "show.bat": {
       "sha256": "0958e3ce1557a0b5faef4e8d5551342625898897f4345e1292344d455e7b9068",
