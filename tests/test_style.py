@@ -103,6 +103,14 @@ class LicenseFiles(unittest.TestCase):
         self.assertIn("(NOTICE.md)", readme)
         self.assertNotIn("라이선스는 아직 정하지 않았", readme)
 
+    def test_bible_text_credits_its_author(self):
+        """개역한글판은 저작재산권이 끝났어도 성명표시권과 동일성유지권은 남는다(대한성서공회 안내). 저작자를 밝혀 둔다."""
+        notice = (ROOT / "NOTICE.md").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("성경 본문: 『성경전서 개역한글판』, 대한성서공회, 1961", notice)
+        self.assertIn("저작자: 대한성서공회, 『성경전서 개역한글판』, 1961.", readme)
+        self.assertNotIn("직접 확인해 준 건 아니에요", readme)
+
     def test_fonts_keep_their_own_license_file(self):
         self.assertIn("SIL Open Font License", (ROOT / "fonts" / "LICENSE.txt").read_text(encoding="utf-8"))
 
