@@ -5,10 +5,10 @@
   python tools/routes.py --stamp-themes F   F(JSON: {"일차": ["테마 id", ...]})대로 날마다 themes 를 쓴다
   python tools/routes.py --summary          시기와 테마마다 며칠인지 보여 준다
 
-길은 다섯 가지다. 전체 순서(원래 1000일), 시기별, 테마별, 갈래별(section 값 그대로), 그리고 이 파일이 정하는 시기와 테마.
+길은 다섯 가지다. 전체 순서(원래 3650일), 시기별, 테마별, 갈래별(section 값 그대로), 그리고 이 파일이 정하는 시기와 테마.
   - 시기: 책 이름으로 나눈 읽기 길잡이다. 학자마다 책의 연대를 다르게 보므로 연대를 단정하지 않고, 열왕기상·역대하만 장으로 가른다.
   - 테마: AI 가 본문과 해설을 보고 날마다 1~2개를 붙였다(사람이 검토한 것은 아니다).
-각 길 안에서는 원래 1000일의 순서를 따른다.
+각 길 안에서는 원래 3650일의 순서를 따른다.
 plan.json 의 날은 한 줄에 하나씩이고(줄바꿈은 파일에 있는 그대로), 이 도구는 era·themes 와 머리말의 routes 외에는 건드리지 않는다.
 """
 import json
@@ -46,7 +46,8 @@ THEMES = [
     {"id": "god", "name": "하나님을 알아 가기", "about": "창조하시고 다스리시고 찾아오시는 분"},
     {"id": "community", "name": "공동체와 가정", "about": "교회와 가정, 관계 속에서 사는 법"},
 ]
-MIN_ERA_DAYS, MIN_THEME_DAYS, MAX_THEME_DAYS = 10, 35, 400
+MIN_ERA_DAYS = 10
+MIN_THEME_PER_1000, MAX_THEME_PER_1000 = 35, 400   # 테마 하나가 차지하는 일수의 한도(1000일당). 계획 길이에 비례해 늘어난다
 
 _BEG, _EXO, _SET, _KIN, _PRO, _EXI, _JES, _CHU, _REV, _TIM = (e["id"] for e in ERAS)
 BOOK_ERA = {
@@ -176,10 +177,11 @@ def check(plan: dict) -> list[str]:
     for e in ERAS:
         if eras[e["id"]] < MIN_ERA_DAYS:
             errs.append(f"시기 '{e['name']}' 이 {eras[e['id']]}일뿐입니다(최소 {MIN_ERA_DAYS}일)")
+    lo, hi = MIN_THEME_PER_1000 * len(days) // 1000, -(-MAX_THEME_PER_1000 * len(days) // 1000)
     for t in THEMES:
         n = themes[t["id"]]
-        if not MIN_THEME_DAYS <= n <= MAX_THEME_DAYS:
-            errs.append(f"테마 '{t['name']}' 이 {n}일입니다({MIN_THEME_DAYS}~{MAX_THEME_DAYS}일이어야 함)")
+        if not lo <= n <= hi:
+            errs.append(f"테마 '{t['name']}' 이 {n}일입니다({lo}~{hi}일이어야 함)")
     return errs
 
 

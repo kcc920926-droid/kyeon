@@ -242,7 +242,7 @@ class RouteWidget(unittest.TestCase):
     def test_progress_line_names_the_route(self):
         w = self.make()
         w.start("manual")
-        self.assertEqual(w.lbl_prog.cget("text"), f"{PLAN['days'][0]['section']} · 1 / 1000")
+        self.assertEqual(w.lbl_prog.cget("text"), f"{PLAN['days'][0]['section']} · 1 / {len(PLAN['days'])}")
         w.set_route("era:exile")
         n = len(w.track)
         self.assertEqual(w.lbl_prog.cget("text"), f"포로와 귀환 · 1 / {n}")

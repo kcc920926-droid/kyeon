@@ -39,7 +39,7 @@ text { font-family:'Segoe UI','Malgun Gothic','Apple SD Gothic Neo','Noto Sans C
   <line x1="195" y1="779" x2="195" y2="797" class="edge" marker-end="url(#arrow)"/>
   <rect x="20" y="799" width="350" height="117" rx="12" class="node" />
   <text x="36" y="829" font-size="18" class="bold accent"><tspan x="36" dy="0">오늘의 말씀</tspan></text>
-  <text x="36" y="855" font-size="15" class=""><tspan x="36" dy="0">1000일 중</tspan><tspan x="36" dy="23">오늘 하루치가</tspan><tspan x="36" dy="23">화면 한켠에 떠요</tspan></text>
+  <text x="36" y="855" font-size="15" class=""><tspan x="36" dy="0">3650일 중</tspan><tspan x="36" dy="23">오늘 하루치가</tspan><tspan x="36" dy="23">화면 한켠에 떠요</tspan></text>
   <line x1="195" y1="918" x2="195" y2="936" class="edge" marker-end="url(#arrow)"/>
   <rect x="20" y="938" width="350" height="94" rx="12" class="node" />
   <text x="36" y="968" font-size="18" class="bold accent"><tspan x="36" dy="0">읽기 · 암송</tspan></text>

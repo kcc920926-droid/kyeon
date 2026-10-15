@@ -273,15 +273,15 @@ class WidgetTests(unittest.TestCase):
         self.assertEqual(w.idx, 499)
         self.assertIsNone(self.state.start_date)
 
-    def test_cycle_after_1000_days(self):
+    def test_cycle_after_the_whole_plan(self):
         self.state.start_date = date(2026, 3, 1)
-        self.clock[0] = date(2026, 3, 1) + timedelta(days=1000)
+        self.clock[0] = date(2026, 3, 1) + timedelta(days=len(self.plan["days"]))
         w = self.make()
         w.start("manual")
         self.assertEqual(w.idx, 0)
 
     def test_every_day_renders_in_one_fixed_frame(self):
-        """1000일 모두 같은 크기의 창에 담긴다. 길이가 달라도 창 모양은 늘 같고, 넘치는 건 스크롤로 읽는다."""
+        """모든 날이 같은 크기의 창에 담긴다. 길이가 달라도 창 모양은 늘 같고, 넘치는 건 스크롤로 읽는다."""
         w = self.make(preview_day=1)
         w.show()
         w.root.update()
@@ -601,6 +601,22 @@ class SkinAndSettings(unittest.TestCase):
         self.assertIs(w.settings_win, win)
         win.close()
         self.assertFalse(win.alive())
+
+    def test_settings_window_shows_the_bible_text_credit(self):
+        """개역한글판의 저작자 표시(성명표시권)는 설정 창 안에서 보여 준다."""
+        w = self.make()
+        w.start("manual")
+        w.open_settings()
+        win = w.settings_win
+        self.assertEqual(win.lbl_credit.cget("text"), K.TEXT_CREDIT)
+        for part in ("개역한글판", "대한성서공회", "1961"):
+            self.assertIn(part, K.TEXT_CREDIT)
+        win.top.update_idletasks()
+        self.assertTrue(win.lbl_credit.grid_info(), "출처 줄이 창 안에 놓여 있어야 한다")
+        self.assertGreater(win.lbl_credit.winfo_width(), 1)
+        bottom = win.lbl_credit.winfo_rooty() + win.lbl_credit.winfo_height()
+        self.assertLessEqual(bottom, win.top.winfo_rooty() + win.top.winfo_reqheight(), "출처 줄이 창 밖으로 잘리면 안 된다")
+        win.close()
 
     def test_autostart_toggle_uses_the_registry_helpers(self):
         from unittest import mock

@@ -41,7 +41,8 @@ import zlib
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-__version__ = "0.3.1"   # 버전의 유일한 원본. 릴리스마다 올린다(docs/RELEASING.md)
+__version__ = "0.4.0"   # 버전의 유일한 원본. 릴리스마다 올린다(docs/RELEASING.md)
+TEXT_CREDIT = "성경 본문: 성경전서 개역한글판, 대한성서공회, 1961"   # 저작자 표시(성명표시권). 설정 창에 보인다. 바꾸지 않는다(NOTICE.md)
 APP = "Kyeon"
 LEGACY_APP = "DailyVerseWidget"  # 켠으로 이름을 바꾸기 전 버전의 자동 실행 값(설치·제거 때 함께 정리)
 BASE = Path(__file__).resolve().parent
@@ -2305,6 +2306,10 @@ class SettingsWindow:
         self.btn_ins = tk.Label(ub, text="업데이트", font=self.f, cursor="hand2", padx=10, pady=3)
         self.btn_ins.bind("<Button-1>", lambda e: self.w.install_update())
         ub.grid(row=r[0], column=0, columnspan=2, sticky="w")
+        r[0] += 1
+        header("본문")
+        self.lbl_credit = reg(tk.Label(inner, text=TEXT_CREDIT, font=self.fs, anchor="w", justify="left"), bg="card", fg="muted")
+        self.lbl_credit.grid(row=r[0], column=0, columnspan=2, sticky="w", pady=(0, 2))
         r[0] += 1
         foot = reg(tk.Frame(body), bg="card")
         foot.pack(fill="x", padx=22, pady=(0, 14))
