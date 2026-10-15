@@ -83,7 +83,12 @@ def blobs_for_tag(tag: str) -> tuple:
     except subprocess.CalledProcessError:
         listed = []
     fonts = tuple(p for p in listed if re.fullmatch(r"fonts/[A-Za-z0-9_][A-Za-z0-9_-]*\.(?:otf|ttf|txt)", p))
-    for p in REQUIRED + OPTIONAL + fonts:
+    try:  # 계획표가 해마다 나뉘어 있으면 data/plan-<첫 일차>.json 도 함께 배포한다(kyeon.py 의 PLAN_PART_RE 와 같은 모양)
+        listed = git("ls-tree", "-r", "--name-only", tag, "data").decode("utf-8").split()
+    except subprocess.CalledProcessError:
+        listed = []
+    plan_parts = tuple(sorted(p for p in listed if re.fullmatch(r"data/plan-\d+\.json", p)))
+    for p in REQUIRED + plan_parts + OPTIONAL + fonts:
         try:
             blobs[p] = git("show", f"{tag}:{p}")
         except subprocess.CalledProcessError:
@@ -103,7 +108,10 @@ def blobs_from_dir(root: Path = ROOT) -> tuple:
     if (root / "fonts").is_dir():
         fonts = [f"fonts/{f.name}" for f in sorted((root / "fonts").iterdir())
                  if f.is_file() and re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_-]*\.(?:otf|ttf|txt)", f.name)]
-    for p in REQUIRED + OPTIONAL + tuple(fonts):
+    plan_parts = []
+    if (root / "data").is_dir():
+        plan_parts = [f"data/{f.name}" for f in sorted((root / "data").iterdir()) if f.is_file() and re.fullmatch(r"plan-\d+\.json", f.name)]
+    for p in REQUIRED + tuple(plan_parts) + OPTIONAL + tuple(fonts):
         f = root.joinpath(*p.split("/"))
         if f.is_file():
             blobs[p] = f.read_bytes()

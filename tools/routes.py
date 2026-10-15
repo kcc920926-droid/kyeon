@@ -198,7 +198,9 @@ def main(argv: list[str]) -> int:
         tags = json.loads(Path(argv[argv.index("--stamp-themes") + 1]).read_text(encoding="utf-8"))
         print("바뀐 날:", stamp_themes({str(k): v for k, v in tags.items()}))
         return 0
-    plan = json.loads(PLAN.read_text(encoding="utf-8"))
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import planio
+    plan = planio.read_plan(PLAN)
     if "--summary" in argv:
         print(summary(plan))
         return 0

@@ -231,11 +231,32 @@ def day_index(start: date, today: date, n: int) -> int:
     return max(0, (today - start).days) % n
 
 
-def load_plan(path: Path = PLAN_FILE) -> dict:
+PLAN_PART_RE = re.compile(r"plan-(\d+)\.json")
+
+
+def plan_part_files(path: Path = PLAN_FILE) -> list[Path]:
+    """plan.json 뒤에 이어 붙는 같은 폴더의 plan-<첫 일차>.json 들. 일차 순서로 정렬한다."""
+    found = []
+    for p in Path(path).parent.glob("plan-*.json"):
+        m = PLAN_PART_RE.fullmatch(p.name)
+        if m:
+            found.append((int(m.group(1)), p))
+    return [p for _n, p in sorted(found)]
+
+
+def load_plan(path: Path = PLAN_FILE, parts: list[Path] | None = None) -> dict:
+    """계획표. plan.json 이 첫 묶음(머리말과 길 정의 포함)이고, 같은 폴더의 plan-<첫 일차>.json 이 있으면 그 날들을 이어 붙인다
+    (parts 로 이어 붙일 파일을 직접 줄 수 있다). 날 번호는 합쳐서 1..N 으로 빈틈없이 이어져야 한다."""
     plan = json.loads(path.read_text(encoding="utf-8"))
-    days = plan["days"]
+    days = list(plan["days"])
+    for p in (plan_part_files(path) if parts is None else parts):
+        extra = json.loads(Path(p).read_text(encoding="utf-8"))
+        if not isinstance(extra, dict) or not isinstance(extra.get("days"), list):
+            raise ValueError(f"{Path(p).name} 의 모양이 다릅니다")
+        days += extra["days"]
     if not days or [d["day"] for d in days] != list(range(1, len(days) + 1)):
         raise ValueError("plan.json 의 day 번호가 1..N 연속이 아닙니다")
+    plan["days"] = days
     return plan
 
 
@@ -245,7 +266,7 @@ ROUTE_KIND_NAMES = {"all": "전체 순서", "era": "시기별", "theme": "테마
 
 
 def build_routes(plan: dict) -> list[dict]:
-    """읽는 길 목록. 길마다 {id, kind, name, about, idxs}. idxs 는 plan["days"] 의 색인이고 원래 1000일의 순서를 따른다.
+    """읽는 길 목록. 길마다 {id, kind, name, about, idxs}. idxs 는 plan["days"] 의 색인이고 원래 날 순서를 따른다.
     맨 앞은 늘 전체 순서. 시기·테마는 계획표 머리말의 routes 정의와 날마다의 era·themes 가 있을 때만 생기고(없는 옛 계획표는
     전체 순서와 갈래만), 갈래는 section 값으로 만든다. 날이 하나도 없는 길은 뺀다."""
     days = plan["days"]
@@ -603,7 +624,11 @@ def missing_modules(src: str) -> list[str]:
     return out
 
 
-def _verify_staged(m: dict, stage: Path, changes: list[str]) -> None:
+def _is_plan_file(path: str) -> bool:
+    return path == "data/plan.json" or (path.startswith("data/") and PLAN_PART_RE.fullmatch(path[5:]) is not None)
+
+
+def _verify_staged(m: dict, stage: Path, changes: list[str], base_dir: Path = BASE) -> None:
     """바꿔 넣기 전에 받은 파일이 쓸 만한지 본다(프로그램은 문법과 버전, 계획표는 형식)."""
     if "kyeon.py" in changes:
         src = (stage / "kyeon.py").read_text(encoding="utf-8")
@@ -618,9 +643,14 @@ def _verify_staged(m: dict, stage: Path, changes: list[str]) -> None:
         mm = re.search(r'^__version__ = "([^"]+)"', src, re.M)
         if not mm or mm.group(1) != m["version"]:
             raise UpdateError("받은 프로그램의 버전이 업데이트 정보와 달라 중단했습니다")
-    if "data/plan.json" in changes:
+    if any(_is_plan_file(p) for p in changes):
+        # 계획표는 plan.json 과 plan-<일차>.json 들을 이어 붙인 것이다. 이번에 받은 파일은 받은 것으로, 안 바뀐 파일은 지금 것으로 합쳐 본다
+        def source(p: str) -> Path:
+            return _local(stage if p in changes else base_dir, p)
         try:
-            load_plan(stage / "data" / "plan.json")
+            parts = sorted((p for p in m["files"] if _is_plan_file(p) and p != "data/plan.json"),
+                           key=lambda p: int(PLAN_PART_RE.fullmatch(p[5:]).group(1)))
+            load_plan(source("data/plan.json"), [source(p) for p in parts])
         except (OSError, ValueError, KeyError, TypeError) as e:
             raise UpdateError("받은 계획표에 문제가 있어 중단했습니다") from e
     for path in changes:  # 글꼴 파일은 OpenType/TrueType 머리말(OTTO, 0x00010000)로 시작해야 한다
@@ -663,7 +693,7 @@ def apply_update(m: dict, base_dir: Path = BASE, state_dir: Path = STATE_DIR, fe
             dest = _local(stage, path)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(data)
-        _verify_staged(m, stage, changes)
+        _verify_staged(m, stage, changes, base_dir)
         shutil.rmtree(backup, ignore_errors=True)
         for path in changes:  # 지금 파일을 백업해 둔다(--rollback 으로 되돌릴 수 있게)
             src = _local(base_dir, path)

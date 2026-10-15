@@ -6,7 +6,7 @@
 
 | 층 | 무엇 | 얼마나 자주 바뀌나 | 어떻게 배포하나 |
 |---|---|---|---|
-| 프로그램과 자료 | `kyeon.py`, `data/plan.json`, 글꼴, 문서 | 릴리스마다 | 태그 + `latest.json` (사용자 PC가 스스로 받아 바꿈) |
+| 프로그램과 자료 | `kyeon.py`, `data/plan.json`(과 이어 붙는 `data/plan-<첫 일차>.json`), 글꼴, 문서 | 릴리스마다 | 태그 + `latest.json` (사용자 PC가 스스로 받아 바꿈) |
 | 실행 환경 | `kyeon.exe` (Python과 tkinter가 든 껍데기) | 거의 안 바뀜 | GitHub Release의 파일 (사용자가 한 번 내려받아 설치) |
 
 `kyeon.exe`는 옆에 있는 `kyeon.py`를 그대로 실행하기만 합니다. 그래서 글을 고치거나 기능을 더하는 릴리스에서는 exe를 다시 만들 필요가 없습니다. 설치된 `kyeon.py`가 스스로 새 버전으로 바뀝니다.
@@ -83,9 +83,9 @@ exe를 다시 만들어야 하는 때는 둘뿐입니다. `kyeon.py`가 exe에 �
 
 `kyeon.py`의 업데이트 코드가 아래를 확인합니다. 릴리스를 만들 때도 같은 전제로 만듭니다.
 
-- `latest.json`의 `files`에는 `kyeon.py`, `data/plan.json`, `install.bat`, `uninstall.bat`, `show.bat`, `README.md`, `CHANGELOG.md`, `fonts/*` 같은 **정해진 이름**만 쓸 수 있습니다. 폴더 안의 `data/*.json`, `fonts/*.otf .ttf .txt`와 최상위 `.py .bat .md .txt` 파일만 허용하고, 그 밖의 경로는 목록 전체를 거부합니다. **`.exe`는 업데이트로 받지 않습니다.** 새 파일 형식을 더하려면 `UPDATE_PATH_RE`부터 고쳐서 먼저 내보내야 합니다.
+- `latest.json`의 `files`에는 `kyeon.py`, `data/plan.json`, `data/plan-<첫 일차>.json`, `install.bat`, `uninstall.bat`, `show.bat`, `README.md`, `CHANGELOG.md`, `fonts/*` 같은 **정해진 이름**만 쓸 수 있습니다. 폴더 안의 `data/*.json`, `fonts/*.otf .ttf .txt`와 최상위 `.py .bat .md .txt` 파일만 허용하고, 그 밖의 경로는 목록 전체를 거부합니다. **`.exe`는 업데이트로 받지 않습니다.** 새 파일 형식을 더하려면 `UPDATE_PATH_RE`부터 고쳐서 먼저 내보내야 합니다.
 - 파일 주소는 `latest.json`을 받은 서버와 같은 서버여야 하고 `https`여야 합니다.
-- 받은 파일은 해시와 크기가 목록과 같아야 하고, `kyeon.py`는 문법과 `__version__`이 목록과 같아야 하며, 쓰는 모듈이 실행 환경에 모두 있어야 하고, `plan.json`은 일차 번호가 1부터 이어져야 합니다. 하나라도 틀리면 아무것도 바꾸지 않습니다.
+- 받은 파일은 해시와 크기가 목록과 같아야 하고, `kyeon.py`는 문법과 `__version__`이 목록과 같아야 하며, 쓰는 모듈이 실행 환경에 모두 있어야 하고, 계획표(`plan.json`과 `plan-<첫 일차>.json`을 이어 붙인 것)는 일차 번호가 1부터 빈틈없이 이어져야 합니다. 이번에 안 바뀐 계획표 파일은 지금 설치된 것으로 합쳐서 봅니다. 하나라도 틀리면 아무것도 바꾸지 않습니다.
 - 바꾸기 전 파일은 `%LOCALAPPDATA%\Kyeon\backup\<이전 버전>`에 보관합니다(최근 3개).
 
 ## 제거가 지우는 것
